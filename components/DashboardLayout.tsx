@@ -73,7 +73,7 @@ export default function DashboardLayout({
                   href={item.href}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
-                      ? "bg-blue-50 text-blue-600 font-medium"
+                      ? "bg-green-50 text-green-600 font-medium"
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
@@ -91,7 +91,7 @@ export default function DashboardLayout({
             <div className="mb-4">
               <p className="text-sm font-medium text-gray-900">{user.name}</p>
               <p className="text-xs text-gray-500">{user.email}</p>
-              <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+              <span className="inline-block mt-2 px-2 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded">
                 {user.plan?.toUpperCase() || "STARTER"}
               </span>
             </div>

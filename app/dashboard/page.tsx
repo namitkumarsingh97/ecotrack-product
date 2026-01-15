@@ -1,12 +1,19 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
-import KPICard from '@/components/KPICard';
-import ScoreCard from '@/components/ScoreCard';
-import { companyAPI, esgAPI } from '@/lib/api';
-import { Building2, TrendingUp, Users, Leaf, Shield, FileText } from 'lucide-react';
-import Link from 'next/link';
+import { useEffect, useState } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
+import KPICard from "@/components/KPICard";
+import ScoreCard from "@/components/ScoreCard";
+import { companyAPI, esgAPI } from "@/lib/api";
+import {
+  Building2,
+  TrendingUp,
+  Users,
+  Leaf,
+  Shield,
+  FileText,
+} from "lucide-react";
+import Link from "next/link";
 
 export default function DashboardPage() {
   const [companies, setCompanies] = useState<any[]>([]);
@@ -31,7 +38,7 @@ export default function DashboardPage() {
         setEsgScores(scoresRes.data.scores);
       }
     } catch (error) {
-      console.error('Failed to load data:', error);
+      console.error("Failed to load data:", error);
     } finally {
       setLoading(false);
     }
@@ -43,7 +50,7 @@ export default function DashboardPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
         </div>
       </DashboardLayout>
     );
@@ -62,7 +69,7 @@ export default function DashboardPage() {
           </p>
           <Link
             href="/dashboard/company"
-            className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+            className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
           >
             Add Company
           </Link>
@@ -90,11 +97,11 @@ export default function DashboardPage() {
             title="Companies"
             value={companies.length}
             icon={Building2}
-            color="blue"
+            color="green"
           />
           <KPICard
             title="Overall ESG Score"
-            value={latestScore ? latestScore.overallScore.toFixed(1) : 'N/A'}
+            value={latestScore ? latestScore.overallScore.toFixed(1) : "N/A"}
             icon={TrendingUp}
             color="green"
           />
@@ -147,7 +154,7 @@ export default function DashboardPage() {
             </p>
             <Link
               href="/dashboard/environment"
-              className="inline-block px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700"
+              className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
             >
               Add Metrics
             </Link>
@@ -168,7 +175,7 @@ export default function DashboardPage() {
             title="Social Metrics"
             description="Monitor workforce & safety data"
             href="/dashboard/social"
-            color="blue"
+            color="green"
           />
           <QuickActionCard
             icon={Shield}
@@ -185,9 +192,9 @@ export default function DashboardPage() {
 
 function QuickActionCard({ icon: Icon, title, description, href, color }: any) {
   const colorClasses = {
-    green: 'bg-green-50 text-green-600 hover:bg-green-100',
-    blue: 'bg-blue-50 text-blue-600 hover:bg-blue-100',
-    purple: 'bg-purple-50 text-purple-600 hover:bg-purple-100',
+    green: "bg-green-50 text-green-600 hover:bg-green-100",
+    green: "bg-green-50 text-green-600 hover:bg-green-100",
+    purple: "bg-purple-50 text-purple-600 hover:bg-purple-100",
   };
 
   return (
@@ -198,11 +205,10 @@ function QuickActionCard({ icon: Icon, title, description, href, color }: any) {
       <div className={`inline-flex p-3 rounded-lg mb-4 ${colorClasses[color]}`}>
         <Icon size={24} />
       </div>
-      <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-blue-600">
+      <h3 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-green-600">
         {title}
       </h3>
       <p className="text-gray-600 text-sm">{description}</p>
     </Link>
   );
 }
-

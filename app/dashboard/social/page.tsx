@@ -1,23 +1,25 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import DashboardLayout from '@/components/DashboardLayout';
-import { companyAPI, metricsAPI } from '@/lib/api';
-import { Users, Save } from 'lucide-react';
+import { useEffect, useState } from "react";
+import DashboardLayout from "@/components/DashboardLayout";
+import { companyAPI, metricsAPI } from "@/lib/api";
+import { Users, Save } from "lucide-react";
 
 export default function SocialPage() {
   const [companies, setCompanies] = useState<any[]>([]);
-  const [selectedCompanyId, setSelectedCompanyId] = useState('');
+  const [selectedCompanyId, setSelectedCompanyId] = useState("");
   const [formData, setFormData] = useState({
-    totalEmployees: '',
-    femaleEmployees: '',
-    avgTrainingHours: '',
-    workplaceIncidents: '',
-    employeeTurnoverPercent: '',
-    period: `${new Date().getFullYear()}-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`,
+    totalEmployees: "",
+    femaleEmployees: "",
+    avgTrainingHours: "",
+    workplaceIncidents: "",
+    employeeTurnoverPercent: "",
+    period: `${new Date().getFullYear()}-Q${Math.ceil(
+      (new Date().getMonth() + 1) / 3
+    )}`,
   });
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
+  const [message, setMessage] = useState({ type: "", text: "" });
 
   useEffect(() => {
     loadCompanies();
@@ -31,14 +33,14 @@ export default function SocialPage() {
         setSelectedCompanyId(response.data.companies[0]._id);
       }
     } catch (error) {
-      console.error('Failed to load companies:', error);
+      console.error("Failed to load companies:", error);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessage({ type: '', text: '' });
+    setMessage({ type: "", text: "" });
 
     try {
       const data = {
@@ -52,19 +54,27 @@ export default function SocialPage() {
       };
 
       await metricsAPI.createSocial(data);
-      setMessage({ type: 'success', text: 'Social metrics saved successfully!' });
+      setMessage({
+        type: "success",
+        text: "Social metrics saved successfully!",
+      });
 
       // Reset form
       setFormData({
-        totalEmployees: '',
-        femaleEmployees: '',
-        avgTrainingHours: '',
-        workplaceIncidents: '',
-        employeeTurnoverPercent: '',
-        period: `${new Date().getFullYear()}-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`,
+        totalEmployees: "",
+        femaleEmployees: "",
+        avgTrainingHours: "",
+        workplaceIncidents: "",
+        employeeTurnoverPercent: "",
+        period: `${new Date().getFullYear()}-Q${Math.ceil(
+          (new Date().getMonth() + 1) / 3
+        )}`,
       });
     } catch (error: any) {
-      setMessage({ type: 'error', text: error.response?.data?.error || 'Failed to save metrics' });
+      setMessage({
+        type: "error",
+        text: error.response?.data?.error || "Failed to save metrics",
+      });
     } finally {
       setLoading(false);
     }
@@ -75,7 +85,10 @@ export default function SocialPage() {
       <DashboardLayout>
         <div className="text-center py-12">
           <p className="text-gray-600 mb-4">Please add a company first</p>
-          <a href="/dashboard/company" className="text-blue-600 hover:underline">
+          <a
+            href="/dashboard/company"
+            className="text-green-600 hover:underline"
+          >
             Go to Company Page
           </a>
         </div>
@@ -87,16 +100,20 @@ export default function SocialPage() {
     <DashboardLayout>
       <div className="max-w-4xl mx-auto">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Social Metrics</h1>
-          <p className="text-gray-600">Track workforce diversity, training, and safety</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            Social Metrics
+          </h1>
+          <p className="text-gray-600">
+            Track workforce diversity, training, and safety
+          </p>
         </div>
 
         {message.text && (
           <div
             className={`mb-6 px-4 py-3 rounded-lg ${
-              message.type === 'success'
-                ? 'bg-green-50 border border-green-200 text-green-700'
-                : 'bg-red-50 border border-red-200 text-red-700'
+              message.type === "success"
+                ? "bg-green-50 border border-green-200 text-green-700"
+                : "bg-red-50 border border-red-200 text-red-700"
             }`}
           >
             {message.text}
@@ -105,12 +122,16 @@ export default function SocialPage() {
 
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
           <div className="flex items-center gap-3 mb-6">
-            <div className="p-3 bg-blue-100 rounded-lg">
-              <Users className="text-blue-600" size={24} />
+            <div className="p-3 bg-green-100 rounded-lg">
+              <Users className="text-green-600" size={24} />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Social Data</h2>
-              <p className="text-sm text-gray-600">Enter your workforce and safety metrics</p>
+              <h2 className="text-xl font-semibold text-gray-900">
+                Social Data
+              </h2>
+              <p className="text-sm text-gray-600">
+                Enter your workforce and safety metrics
+              </p>
             </div>
           </div>
 
@@ -123,7 +144,7 @@ export default function SocialPage() {
                 required
                 value={selectedCompanyId}
                 onChange={(e) => setSelectedCompanyId(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
               >
                 {companies.map((company) => (
                   <option key={company._id} value={company._id}>
@@ -141,8 +162,10 @@ export default function SocialPage() {
                 type="text"
                 required
                 value={formData.period}
-                onChange={(e) => setFormData({ ...formData, period: e.target.value })}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={(e) =>
+                  setFormData({ ...formData, period: e.target.value })
+                }
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                 placeholder="2026-Q1"
               />
             </div>
@@ -157,8 +180,10 @@ export default function SocialPage() {
                   required
                   min="0"
                   value={formData.totalEmployees}
-                  onChange={(e) => setFormData({ ...formData, totalEmployees: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) =>
+                    setFormData({ ...formData, totalEmployees: e.target.value })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="100"
                 />
               </div>
@@ -172,8 +197,13 @@ export default function SocialPage() {
                   required
                   min="0"
                   value={formData.femaleEmployees}
-                  onChange={(e) => setFormData({ ...formData, femaleEmployees: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      femaleEmployees: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="30"
                 />
               </div>
@@ -188,8 +218,13 @@ export default function SocialPage() {
                   min="0"
                   step="0.1"
                   value={formData.avgTrainingHours}
-                  onChange={(e) => setFormData({ ...formData, avgTrainingHours: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      avgTrainingHours: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="20"
                 />
               </div>
@@ -203,8 +238,13 @@ export default function SocialPage() {
                   required
                   min="0"
                   value={formData.workplaceIncidents}
-                  onChange={(e) => setFormData({ ...formData, workplaceIncidents: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      workplaceIncidents: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="2"
                 />
               </div>
@@ -220,8 +260,13 @@ export default function SocialPage() {
                   max="100"
                   step="0.1"
                   value={formData.employeeTurnoverPercent}
-                  onChange={(e) => setFormData({ ...formData, employeeTurnoverPercent: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      employeeTurnoverPercent: e.target.value,
+                    })
+                  }
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
                   placeholder="12"
                 />
               </div>
@@ -231,10 +276,10 @@ export default function SocialPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 <Save size={20} />
-                {loading ? 'Saving...' : 'Save Metrics'}
+                {loading ? "Saving..." : "Save Metrics"}
               </button>
             </div>
           </form>
@@ -243,4 +288,3 @@ export default function SocialPage() {
     </DashboardLayout>
   );
 }
-
