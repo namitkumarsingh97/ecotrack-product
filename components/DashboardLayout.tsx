@@ -1,21 +1,34 @@
-'use client';
+"use client";
 
-import { useRouter, usePathname } from 'next/navigation';
-import { Leaf, LayoutDashboard, Building2, Leaf as LeafIcon, Users, Shield, FileText, LogOut } from 'lucide-react';
-import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useRouter, usePathname } from "next/navigation";
+import {
+  Leaf,
+  LayoutDashboard,
+  Building2,
+  Leaf as LeafIcon,
+  Users,
+  Shield,
+  FileText,
+  LogOut,
+} from "lucide-react";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const userData = localStorage.getItem('user');
+    const token = localStorage.getItem("token");
+    const userData = localStorage.getItem("user");
 
     if (!token) {
-      router.push('/auth/login');
+      router.push("/auth/login");
       return;
     }
 
@@ -25,18 +38,18 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [router]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    router.push('/auth/login');
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    router.push("/auth/login");
   };
 
   const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Company', href: '/dashboard/company', icon: Building2 },
-    { name: 'Environment', href: '/dashboard/environment', icon: LeafIcon },
-    { name: 'Social', href: '/dashboard/social', icon: Users },
-    { name: 'Governance', href: '/dashboard/governance', icon: Shield },
-    { name: 'Reports', href: '/dashboard/reports', icon: FileText },
+    { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+    { name: "Company", href: "/dashboard/company", icon: Building2 },
+    { name: "Environment", href: "/dashboard/environment", icon: LeafIcon },
+    { name: "Social", href: "/dashboard/social", icon: Users },
+    { name: "Governance", href: "/dashboard/governance", icon: Shield },
+    { name: "Reports", href: "/dashboard/reports", icon: FileText },
   ];
 
   return (
@@ -60,8 +73,8 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                   href={item.href}
                   className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                     isActive
-                      ? 'bg-blue-50 text-blue-600 font-medium'
-                      : 'text-gray-700 hover:bg-gray-50'
+                      ? "bg-blue-50 text-blue-600 font-medium"
+                      : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   <Icon size={20} />
@@ -79,7 +92,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
               <p className="text-sm font-medium text-gray-900">{user.name}</p>
               <p className="text-xs text-gray-500">{user.email}</p>
               <span className="inline-block mt-2 px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
-                {user.plan?.toUpperCase() || 'STARTER'}
+                {user.plan?.toUpperCase() || "STARTER"}
               </span>
             </div>
           )}
@@ -93,11 +106,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         </div>
       </aside>
 
-      {/* Main content */}
-      <main className="flex-1 ml-64 p-8">
-        {children}
-      </main>
+      <main className="flex-1 ml-64 p-8">{children}</main>
     </div>
   );
 }
-
