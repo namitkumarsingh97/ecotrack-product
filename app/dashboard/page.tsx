@@ -193,7 +193,6 @@ export default function DashboardPage() {
 function QuickActionCard({ icon: Icon, title, description, href, color }: any) {
   const colorClasses = {
     green: "bg-green-50 text-green-600 hover:bg-green-100",
-    green: "bg-green-50 text-green-600 hover:bg-green-100",
     purple: "bg-purple-50 text-purple-600 hover:bg-purple-100",
   };
 
