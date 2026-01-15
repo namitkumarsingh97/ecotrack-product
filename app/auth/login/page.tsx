@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -40,7 +40,7 @@ export default function LoginPage() {
           <span className="text-2xl font-bold text-gray-900">EcoTrack India</span>
         </div>
 
-        <h1 className="text-3xl font-bold text-center mb-2">Welcome Back</h1>
+        {/* <h1 className="text-3xl font-bold text-center mb-2">Welcome</h1> */}
         <p className="text-gray-600 text-center mb-8">
           Login to access your ESG dashboard
         </p>
