@@ -3,38 +3,38 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-  }
+	:root {
+		--background: 0 0% 100%;
+		--foreground: 222.2 84% 4.9%;
+	}
 
-  .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-  }
+	.dark {
+		--background: 222.2 84% 4.9%;
+		--foreground: 210 40% 98%;
+	}
 }
 
 @layer base {
-  * {
-    @apply border-gray-200;
-  }
-  body {
-    @apply bg-gray-50 text-gray-900;
-  }
+	* {
+		@apply border-gray-200;
+	}
+	body {
+		@apply bg-gray-50 text-gray-900;
+	}
 }
 
 .score-excellent {
-  @apply bg-green-100 text-green-800 border-green-300;
+	@apply bg-green-100 text-green-800 border-green-300;
 }
 
 .score-good {
-  @apply bg-green-100 text-green-800 border-green-300;
+	@apply bg-green-100 text-green-800 border-green-300;
 }
 
 .score-fair {
-  @apply bg-yellow-100 text-yellow-800 border-yellow-300;
+	@apply bg-yellow-100 text-yellow-800 border-yellow-300;
 }
 
 .score-poor {
-  @apply bg-red-100 text-red-800 border-red-300;
+	@apply bg-red-100 text-red-800 border-red-300;
 }
