@@ -12,11 +12,16 @@
 	},
 	"dependencies": {
 		"axios": "^1.6.5",
+		"date-fns": "^2.30.0",
 		"lucide-react": "^0.303.0",
 		"next": "^14.0.4",
+		"next-intl": "^4.7.0",
 		"react": "^18.2.0",
 		"react-dom": "^18.2.0",
-		"recharts": "^2.10.3"
+		"react-hot-toast": "^2.6.0",
+		"recharts": "^2.15.4",
+		"xlsx": "^0.18.5",
+		"zustand": "^5.0.10"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.3.11",

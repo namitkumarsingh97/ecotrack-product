@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import Toaster from "@/components/Toaster";
+import LocaleInitializer from "@/components/LocaleInitializer";
 
 export const metadata: Metadata = {
 	title: "EcoTrack India - ESG & Sustainability SaaS",
@@ -13,7 +15,11 @@ export default function RootLayout({
 }) {
 	return (
 		<html lang="en">
-			<body>{children}</body>
+			<body>
+				<LocaleInitializer />
+				{children}
+				<Toaster />
+			</body>
 		</html>
 	);
 }

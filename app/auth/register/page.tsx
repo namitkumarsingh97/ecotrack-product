@@ -1,37 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { authAPI } from "@/lib/api";
-import { Leaf } from "lucide-react";
+import { Leaf, Mail, Phone, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 
 export default function RegisterPage() {
-	const router = useRouter();
-	const [formData, setFormData] = useState({
-		name: "",
-		email: "",
-		password: "",
-	});
-	const [error, setError] = useState("");
-	const [loading, setLoading] = useState(false);
-
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setError("");
-		setLoading(true);
-
-		try {
-			const response = await authAPI.register(formData);
-			localStorage.setItem("token", response.data.token);
-			localStorage.setItem("user", JSON.stringify(response.data.user));
-			router.push("/dashboard");
-		} catch (err: any) {
-			setError(err.response?.data?.error || "Registration failed");
-		} finally {
-			setLoading(false);
-		}
-	};
+	const supportEmail = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@ecotrack.in";
+	const supportPhone = process.env.NEXT_PUBLIC_SUPPORT_PHONE || "+91-XXXXX-XXXXX";
 
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-green-50 to-green-50 flex items-center justify-center p-4">
@@ -43,86 +17,54 @@ export default function RegisterPage() {
 					</span>
 				</div>
 
-				<h1 className="text-3xl font-bold text-center mb-2">Get Started</h1>
+				<h1 className="text-2xl font-bold text-center mb-2">Request Access</h1>
 				<p className="text-gray-600 text-center mb-8">
-					Create your account to start ESG reporting
+					EcoTrack India is a B2B SaaS platform. Accounts are created by administrators.
 				</p>
 
-				{error && (
-					<div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6">
-						{error}
+				<div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
+					<p className="text-blue-800 text-sm mb-4">
+						To get started with EcoTrack India, please contact us to request an account. We'll set up your company profile and send you login credentials.
+					</p>
+					
+					<div className="space-y-3">
+						<a
+							href={`mailto:${supportEmail}?subject=Request Access - EcoTrack India&body=Hello,%0D%0A%0D%0AI would like to request access to EcoTrack India.%0D%0A%0D%0ACompany Name:%0D%0AEmail:%0D%0APhone:%0D%0A%0D%0AThank you!`}
+							className="flex items-center gap-3 text-blue-700 hover:text-blue-800 transition-colors"
+						>
+							<Mail size={20} className="text-blue-600" />
+							<span className="font-medium">{supportEmail}</span>
+						</a>
+						
+						{supportPhone && (
+							<a
+								href={`tel:${supportPhone.replace(/\s/g, '')}`}
+								className="flex items-center gap-3 text-blue-700 hover:text-blue-800 transition-colors"
+							>
+								<Phone size={20} className="text-blue-600" />
+								<span className="font-medium">{supportPhone}</span>
+							</a>
+						)}
 					</div>
-				)}
+				</div>
 
-				<form onSubmit={handleSubmit} className="space-y-6">
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							Full Name
-						</label>
-						<input
-							type="text"
-							required
-							value={formData.name}
-							onChange={(e) =>
-								setFormData({ ...formData, name: e.target.value })
-							}
-							className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-							placeholder="John Doe"
-						/>
-					</div>
+				<div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+					<h3 className="font-semibold text-green-900 mb-2">What happens next?</h3>
+					<ol className="text-sm text-green-800 space-y-2 list-decimal list-inside">
+						<li>Contact us via email or phone</li>
+						<li>We'll create your account and company profile</li>
+						<li>You'll receive login credentials via email</li>
+						<li>Login and start tracking your ESG metrics!</li>
+					</ol>
+				</div>
 
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							Email Address
-						</label>
-						<input
-							type="email"
-							required
-							value={formData.email}
-							onChange={(e) =>
-								setFormData({ ...formData, email: e.target.value })
-							}
-							className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-							placeholder="you@company.com"
-						/>
-					</div>
-
-					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">
-							Password
-						</label>
-						<input
-							type="password"
-							required
-							minLength={6}
-							value={formData.password}
-							onChange={(e) =>
-								setFormData({ ...formData, password: e.target.value })
-							}
-							className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-							placeholder="••••••••"
-						/>
-						<p className="text-xs text-gray-500 mt-1">Minimum 6 characters</p>
-					</div>
-
-					<button
-						type="submit"
-						disabled={loading}
-						className="w-full py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-					>
-						{loading ? "Creating account..." : "Create Account"}
-					</button>
-				</form>
-
-				<p className="text-center mt-6 text-gray-600">
-					Already have an account?{" "}
-					<Link
-						href="/auth/login"
-						className="text-green-600 font-semibold hover:underline"
-					>
-						Login here
-					</Link>
-				</p>
+				<Link
+					href="/auth/login"
+					className="flex items-center justify-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+				>
+					<ArrowLeft size={16} />
+					Back to Login
+				</Link>
 			</div>
 		</div>
 	);

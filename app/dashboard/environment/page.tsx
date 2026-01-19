@@ -2,115 +2,162 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { companyAPI, metricsAPI, esgAPI } from "@/lib/api";
-import { Leaf, Save, Calculator } from "lucide-react";
+import { companyAPI, metricsAPI } from "@/lib/api";
+import { showToast } from "@/lib/toast";
+import { useTranslation } from "@/hooks/useTranslation";
+import { Leaf, Plus, Edit, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCompanyStore, useMetricsStore } from "@/stores";
+import ETTable from "@/components/ETTable";
+
+interface EnvironmentalMetric {
+	_id: string;
+	companyId: string;
+	period: string;
+	electricityUsageKwh: number;
+	fuelConsumptionLitres: number;
+	waterUsageKL: number;
+	wasteGeneratedKg: number;
+	renewableEnergyPercent: number;
+	carbonEmissionsTons: number;
+	createdAt: string;
+	updatedAt: string;
+}
 
 export default function EnvironmentPage() {
-	const [companies, setCompanies] = useState<any[]>([]);
+	const router = useRouter();
+	const { t } = useTranslation();
 	const [selectedCompanyId, setSelectedCompanyId] = useState("");
-	const [formData, setFormData] = useState({
-		electricityUsageKwh: "",
-		fuelConsumptionLitres: "",
-		waterUsageKL: "",
-		wasteGeneratedKg: "",
-		renewableEnergyPercent: "",
-		carbonEmissionsTons: "",
-		period: `${new Date().getFullYear()}-Q${Math.ceil(
-			(new Date().getMonth() + 1) / 3,
-		)}`,
-	});
-	const [loading, setLoading] = useState(false);
-	const [message, setMessage] = useState({ type: "", text: "" });
+	const [searchTerm, setSearchTerm] = useState("");
+	const [filterPeriod, setFilterPeriod] = useState("all");
+	const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+	// Use stores
+	const { companies, selectedCompany, fetchCompanies } = useCompanyStore();
+	const { 
+		environmental: environmentalMetricsMap,
+		fetchEnvironmental,
+		deleteEnvironmental,
+		isLoading: metricsLoading
+	} = useMetricsStore();
+
+	// Get metrics for selected company
+	const metrics = selectedCompanyId ? (environmentalMetricsMap[selectedCompanyId] || []) : [];
+	const loading = metricsLoading[selectedCompanyId] || false;
 
 	useEffect(() => {
-		loadCompanies();
-	}, []);
+		// Fetch companies from store (with caching)
+		fetchCompanies();
+	}, [fetchCompanies]);
 
-	const loadCompanies = async () => {
-		try {
-			const response = await companyAPI.getAll();
-			setCompanies(response.data.companies);
-			if (response.data.companies.length > 0) {
-				setSelectedCompanyId(response.data.companies[0]._id);
-			}
-		} catch (error) {
-			console.error("Failed to load companies:", error);
+	useEffect(() => {
+		// Set initial selected company
+		if (selectedCompany?._id && !selectedCompanyId) {
+			setSelectedCompanyId(selectedCompany._id);
 		}
-	};
+	}, [selectedCompany, selectedCompanyId]);
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setLoading(true);
-		setMessage({ type: "", text: "" });
+	useEffect(() => {
+		// Fetch metrics when company changes (with caching)
+		if (selectedCompanyId) {
+			fetchEnvironmental(selectedCompanyId);
+		}
+	}, [selectedCompanyId, fetchEnvironmental]);
+
+	const handleDelete = async (id: string) => {
+		if (!confirm(t("environment.deleteConfirm"))) return;
 
 		try {
-			const data = {
-				companyId: selectedCompanyId,
-				electricityUsageKwh: parseFloat(formData.electricityUsageKwh),
-				fuelConsumptionLitres: parseFloat(formData.fuelConsumptionLitres),
-				waterUsageKL: parseFloat(formData.waterUsageKL),
-				wasteGeneratedKg: parseFloat(formData.wasteGeneratedKg),
-				renewableEnergyPercent: parseFloat(formData.renewableEnergyPercent),
-				carbonEmissionsTons: parseFloat(formData.carbonEmissionsTons),
-				period: formData.period,
-			};
-
-			await metricsAPI.createEnvironmental(data);
-			setMessage({
-				type: "success",
-				text: "Environmental metrics saved successfully!",
-			});
-
-			// Reset form
-			setFormData({
-				electricityUsageKwh: "",
-				fuelConsumptionLitres: "",
-				waterUsageKL: "",
-				wasteGeneratedKg: "",
-				renewableEnergyPercent: "",
-				carbonEmissionsTons: "",
-				period: `${new Date().getFullYear()}-Q${Math.ceil(
-					(new Date().getMonth() + 1) / 3,
-				)}`,
-			});
+			setActionLoading(`delete-${id}`);
+			await metricsAPI.deleteEnvironmental(id);
+			// Update store
+			deleteEnvironmental(id, selectedCompanyId);
+			showToast.success(t("environment.deleteSuccess"));
 		} catch (error: any) {
-			setMessage({
-				type: "error",
-				text: error.response?.data?.error || "Failed to save metrics",
-			});
+			showToast.error(error.response?.data?.error || "Failed to delete metric");
 		} finally {
-			setLoading(false);
+			setActionLoading(null);
 		}
 	};
 
-	const handleCalculateScore = async () => {
-		if (!selectedCompanyId) return;
+	// Get unique periods for chips
+	const periods = Array.from(new Set(metrics.map((m) => m.period))).sort().reverse();
 
-		try {
-			await esgAPI.calculate(selectedCompanyId, formData.period);
-			setMessage({
-				type: "success",
-				text: "ESG score calculated! Check the dashboard.",
-			});
-		} catch (error: any) {
-			setMessage({
-				type: "error",
-				text: error.response?.data?.error || "Failed to calculate score",
-			});
-		}
-	};
+	// Filter metrics
+	const filteredMetrics = metrics.filter((metric) => {
+		const matchesSearch = searchTerm === "" || metric.period.toLowerCase().includes(searchTerm.toLowerCase());
+		const matchesPeriod = filterPeriod === "all" || metric.period === filterPeriod;
+		return matchesSearch && matchesPeriod;
+	});
+
+	// Prepare table columns
+	const tableColumns = [
+		{ label: t("dashboard.period"), field: "period", sortable: true },
+		{ label: t("environment.electricityUsage"), field: "electricityUsageKwh", sortable: true },
+		{ label: t("environment.fuelConsumption"), field: "fuelConsumptionLitres", sortable: true },
+		{ label: t("environment.waterUsage"), field: "waterUsageKL", sortable: true },
+		{ label: t("environment.wasteGenerated"), field: "wasteGeneratedKg", sortable: true },
+		{ label: t("environment.renewableEnergy"), field: "renewableEnergyPercent", sortable: true },
+		{ label: t("environment.carbonEmissions"), field: "carbonEmissionsTons", sortable: true },
+		{
+			label: t("common.actions"),
+			field: "actions",
+			sortable: false,
+			formatFn: (value: any, row: any) => {
+				// Use row._id directly since we're passing the full row now
+				const metricId = row?._id;
+				if (!metricId) return null;
+				
+				return (
+					<div className="flex items-center justify-end gap-1">
+						<Link
+							href={`/dashboard/environment/edit/${metricId}`}
+							className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
+							title={t("environment.editMetric")}
+							onClick={(e) => e.stopPropagation()}
+						>
+							<Edit size={14} />
+						</Link>
+						<button
+							onClick={(e) => {
+								e.stopPropagation();
+								handleDelete(metricId);
+							}}
+							disabled={actionLoading === `delete-${metricId}`}
+							className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+							title={t("common.delete")}
+						>
+							<Trash2 size={14} />
+						</button>
+					</div>
+				);
+			},
+		},
+	];
+
+	// Prepare table rows
+	const tableRows = filteredMetrics.map((metric) => ({
+		_id: metric._id,
+		period: metric.period,
+		electricityUsageKwh: metric.electricityUsageKwh != null ? metric.electricityUsageKwh.toLocaleString() : "0",
+		fuelConsumptionLitres: metric.fuelConsumptionLitres != null ? metric.fuelConsumptionLitres.toLocaleString() : "0",
+		waterUsageKL: metric.waterUsageKL != null ? metric.waterUsageKL.toLocaleString() : "0",
+		wasteGeneratedKg: metric.wasteGeneratedKg != null ? metric.wasteGeneratedKg.toLocaleString() : "0",
+		renewableEnergyPercent: metric.renewableEnergyPercent != null ? `${metric.renewableEnergyPercent.toFixed(1)}%` : "0%",
+		carbonEmissionsTons: metric.carbonEmissionsTons != null ? metric.carbonEmissionsTons.toLocaleString() : "0",
+		actions: { _id: metric._id },
+	}));
 
 	if (companies.length === 0) {
 		return (
 			<DashboardLayout>
 				<div className="text-center py-12">
-					<p className="text-gray-600 mb-4">Please add a company first</p>
-					<a
-						href="/dashboard/company"
-						className="text-green-600 hover:underline"
-					>
-						Go to Company Page
-					</a>
+					<Leaf className="mx-auto text-gray-400 mb-4" size={48} />
+					<p className="text-gray-600 mb-4">{t("environment.noCompany")}</p>
+					<Link href="/dashboard/company" className="text-green-600 hover:underline">
+						{t("environment.goToCompany")}
+					</Link>
 				</div>
 			</DashboardLayout>
 		);
@@ -118,223 +165,149 @@ export default function EnvironmentPage() {
 
 	return (
 		<DashboardLayout>
-			<div className="max-w-4xl mx-auto">
-				<div className="mb-8">
-					<h1 className="text-3xl font-bold text-gray-900 mb-2">
-						Environmental Metrics
-					</h1>
-					<p className="text-gray-600">
-						Track energy, water, waste, and carbon emissions
-					</p>
+			<div className="space-y-4">
+				{/* Header with Create Button at Top Right */}
+				<div className="flex items-center justify-between">
+					<div>
+						<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("environment.title")}</h1>
+						<p className="text-xs text-gray-600">{t("environment.subtitle")}</p>
+					</div>
+					<Link
+						href="/dashboard/environment/create"
+						className="flex items-center gap-1.5 px-3 py-1 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 transition-colors"
+					>
+						<Plus size={14} />
+						{t("common.create")}
+					</Link>
 				</div>
 
-				{message.text && (
-					<div
-						className={`mb-6 px-4 py-3 rounded-lg ${
-							message.type === "success"
-								? "bg-green-50 border border-green-200 text-green-700"
-								: "bg-red-50 border border-red-200 text-red-700"
-						}`}
-					>
-						{message.text}
+				{/* Period Chips - At Top */}
+				{periods.length > 0 && (
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+						<div className="flex items-center gap-2 flex-wrap">
+							<button
+								onClick={() => setFilterPeriod("all")}
+								className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+									filterPeriod === "all"
+										? "bg-green-600 text-white"
+										: "bg-gray-200 text-gray-700 hover:bg-gray-300"
+								}`}
+							>
+								{t("dashboard.allPeriods")}
+							</button>
+							{periods.slice(0, 3).map((period) => (
+								<button
+									key={period}
+									onClick={() => setFilterPeriod(period)}
+									className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+										filterPeriod === period
+											? "bg-green-600 text-white"
+											: "bg-gray-200 text-gray-700 hover:bg-gray-300"
+									}`}
+								>
+									{period}
+								</button>
+							))}
+							{periods.length > 3 && (
+								<span className="text-xs text-gray-500 px-2">
+									+{periods.length - 3} more
+								</span>
+							)}
+						</div>
 					</div>
 				)}
 
-				<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-					<div className="flex items-center gap-3 mb-6">
-						<div className="p-3 bg-green-100 rounded-lg">
-							<Leaf className="text-green-600" size={24} />
+				{/* Company Selector */}
+				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+					<label className="block text-xs font-medium text-gray-700 mb-1">{t("dashboard.selectCompany")}</label>
+					<select
+						value={selectedCompanyId}
+						onChange={(e) => setSelectedCompanyId(e.target.value)}
+						className="w-full md:w-auto px-3 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+					>
+						{companies.map((company) => (
+							<option key={company._id} value={company._id}>
+								{company.name}
+							</option>
+						))}
+					</select>
+				</div>
+
+				{/* Metrics Table */}
+				<ETTable
+					columns={tableColumns}
+					rows={tableRows}
+					loading={loading}
+					title={t("environment.title")}
+					showSearch={true}
+					showDownloadBtn={true}
+					showRefreshBtn={false}
+					showSettingsBtn={false}
+					disableDownload={filteredMetrics.length === 0}
+					placeholder={t("common.search") + " by period..."}
+					rowCount={20}
+					downloadName={`environmental-metrics-${new Date().toISOString().split("T")[0]}`}
+					excelColumns={{
+						period: t("dashboard.period"),
+						electricityUsageKwh: t("environment.electricityUsage"),
+						fuelConsumptionLitres: t("environment.fuelConsumption"),
+						waterUsageKL: t("environment.waterUsage"),
+						wasteGeneratedKg: t("environment.wasteGenerated"),
+						renewableEnergyPercent: t("environment.renewableEnergy"),
+						carbonEmissionsTons: t("environment.carbonEmissions"),
+					}}
+					excelRows={filteredMetrics.map((metric) => ({
+						period: metric.period,
+						electricityUsageKwh: metric.electricityUsageKwh,
+						fuelConsumptionLitres: metric.fuelConsumptionLitres,
+						waterUsageKL: metric.waterUsageKL,
+						wasteGeneratedKg: metric.wasteGeneratedKg,
+						renewableEnergyPercent: metric.renewableEnergyPercent,
+						carbonEmissionsTons: metric.carbonEmissionsTons,
+					}))}
+					emptyText={t("environment.noMetrics")}
+					totalRecords={filteredMetrics.length}
+					onSearch={(params) => setSearchTerm(params.searchTerm || "")}
+				>
+					{filteredMetrics.length === 0 && (
+						<div className="text-center py-8">
+							<Leaf size={32} className="mx-auto mb-2 text-gray-300" />
+							<p className="text-xs text-gray-500 mb-2">{t("environment.noMetrics")}</p>
+							<Link
+								href="/dashboard/environment/create"
+								className="text-green-600 hover:underline text-xs"
+							>
+								{t("environment.addFirstMetric")}
+							</Link>
 						</div>
-						<div>
-							<h2 className="text-xl font-semibold text-gray-900">
-								Environmental Data
-							</h2>
-							<p className="text-sm text-gray-600">
-								Enter your environmental metrics for the period
-							</p>
+					)}
+				</ETTable>
+
+				{/* Stats */}
+				<div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+						<div className="text-xs text-gray-600">Total Metrics</div>
+						<div className="text-lg font-semibold text-gray-900">{metrics.length}</div>
+					</div>
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+						<div className="text-xs text-gray-600">Periods</div>
+						<div className="text-lg font-semibold text-green-600">{periods.length}</div>
+					</div>
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+						<div className="text-xs text-gray-600">Avg Renewable Energy</div>
+						<div className="text-lg font-semibold text-blue-600">
+							{metrics.length > 0
+								? (metrics.reduce((sum, m) => sum + m.renewableEnergyPercent, 0) / metrics.length).toFixed(1)
+								: "0"}
+							%
 						</div>
 					</div>
-
-					<form onSubmit={handleSubmit} className="space-y-6">
-						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">
-								Select Company *
-							</label>
-							<select
-								required
-								value={selectedCompanyId}
-								onChange={(e) => setSelectedCompanyId(e.target.value)}
-								className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-							>
-								{companies.map((company) => (
-									<option key={company._id} value={company._id}>
-										{company.name}
-									</option>
-								))}
-							</select>
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+						<div className="text-xs text-gray-600">Total Carbon (tons)</div>
+						<div className="text-lg font-semibold text-orange-600">
+							{metrics.reduce((sum, m) => sum + m.carbonEmissionsTons, 0).toLocaleString()}
 						</div>
-
-						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">
-								Reporting Period *
-							</label>
-							<input
-								type="text"
-								required
-								value={formData.period}
-								onChange={(e) =>
-									setFormData({ ...formData, period: e.target.value })
-								}
-								className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-								placeholder="2026-Q1"
-							/>
-						</div>
-
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Electricity Usage (kWh) *
-								</label>
-								<input
-									type="number"
-									required
-									min="0"
-									step="0.01"
-									value={formData.electricityUsageKwh}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											electricityUsageKwh: e.target.value,
-										})
-									}
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="50000"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Fuel Consumption (Litres) *
-								</label>
-								<input
-									type="number"
-									required
-									min="0"
-									step="0.01"
-									value={formData.fuelConsumptionLitres}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											fuelConsumptionLitres: e.target.value,
-										})
-									}
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="5000"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Water Usage (KL) *
-								</label>
-								<input
-									type="number"
-									required
-									min="0"
-									step="0.01"
-									value={formData.waterUsageKL}
-									onChange={(e) =>
-										setFormData({ ...formData, waterUsageKL: e.target.value })
-									}
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="1000"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Waste Generated (kg) *
-								</label>
-								<input
-									type="number"
-									required
-									min="0"
-									step="0.01"
-									value={formData.wasteGeneratedKg}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											wasteGeneratedKg: e.target.value,
-										})
-									}
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="5000"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Renewable Energy (%) *
-								</label>
-								<input
-									type="number"
-									required
-									min="0"
-									max="100"
-									step="0.1"
-									value={formData.renewableEnergyPercent}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											renewableEnergyPercent: e.target.value,
-										})
-									}
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="20"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Carbon Emissions (tons) *
-								</label>
-								<input
-									type="number"
-									required
-									min="0"
-									step="0.01"
-									value={formData.carbonEmissionsTons}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											carbonEmissionsTons: e.target.value,
-										})
-									}
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="100"
-								/>
-							</div>
-						</div>
-
-						<div className="flex gap-4 pt-4">
-							<button
-								type="submit"
-								disabled={loading}
-								className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-							>
-								<Save size={20} />
-								{loading ? "Saving..." : "Save Metrics"}
-							</button>
-							<button
-								type="button"
-								onClick={handleCalculateScore}
-								className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
-							>
-								<Calculator size={20} />
-								Calculate ESG Score
-							</button>
-						</div>
-					</form>
+					</div>
 				</div>
 			</div>
 		</DashboardLayout>

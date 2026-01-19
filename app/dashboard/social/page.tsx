@@ -2,95 +2,158 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { companyAPI, metricsAPI } from "@/lib/api";
-import { Users, Save } from "lucide-react";
+import { metricsAPI } from "@/lib/api";
+import { showToast } from "@/lib/toast";
+import { useTranslation } from "@/hooks/useTranslation";
+import { Users, Plus, Edit, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCompanyStore, useMetricsStore } from "@/stores";
+import ETTable from "@/components/ETTable";
+
+interface SocialMetric {
+	_id: string;
+	companyId: string;
+	period: string;
+	totalEmployees?: number;
+	femaleEmployees?: number;
+	avgTrainingHours?: number;
+	workplaceIncidents?: number;
+	employeeTurnoverPercent?: number;
+	createdAt: string;
+	updatedAt: string;
+}
 
 export default function SocialPage() {
-	const [companies, setCompanies] = useState<any[]>([]);
+	const router = useRouter();
+	const { t } = useTranslation();
 	const [selectedCompanyId, setSelectedCompanyId] = useState("");
-	const [formData, setFormData] = useState({
-		totalEmployees: "",
-		femaleEmployees: "",
-		avgTrainingHours: "",
-		workplaceIncidents: "",
-		employeeTurnoverPercent: "",
-		period: `${new Date().getFullYear()}-Q${Math.ceil(
-			(new Date().getMonth() + 1) / 3,
-		)}`,
-	});
-	const [loading, setLoading] = useState(false);
-	const [message, setMessage] = useState({ type: "", text: "" });
+	const [searchTerm, setSearchTerm] = useState("");
+	const [filterPeriod, setFilterPeriod] = useState("all");
+	const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+	// Use stores
+	const { companies, selectedCompany, fetchCompanies } = useCompanyStore();
+	const { 
+		social: socialMetricsMap,
+		fetchSocial,
+		deleteSocial,
+		isLoading: metricsLoading
+	} = useMetricsStore();
+
+	// Get metrics for selected company
+	const metrics = selectedCompanyId ? (socialMetricsMap[selectedCompanyId] || []) : [];
+	const loading = metricsLoading[selectedCompanyId] || false;
 
 	useEffect(() => {
-		loadCompanies();
-	}, []);
+		// Fetch companies from store (with caching)
+		fetchCompanies();
+	}, [fetchCompanies]);
 
-	const loadCompanies = async () => {
-		try {
-			const response = await companyAPI.getAll();
-			setCompanies(response.data.companies);
-			if (response.data.companies.length > 0) {
-				setSelectedCompanyId(response.data.companies[0]._id);
-			}
-		} catch (error) {
-			console.error("Failed to load companies:", error);
+	useEffect(() => {
+		// Set initial selected company
+		if (selectedCompany?._id && !selectedCompanyId) {
+			setSelectedCompanyId(selectedCompany._id);
 		}
-	};
+	}, [selectedCompany, selectedCompanyId]);
 
-	const handleSubmit = async (e: React.FormEvent) => {
-		e.preventDefault();
-		setLoading(true);
-		setMessage({ type: "", text: "" });
+	useEffect(() => {
+		// Fetch metrics when company changes (with caching)
+		if (selectedCompanyId) {
+			fetchSocial(selectedCompanyId);
+		}
+	}, [selectedCompanyId, fetchSocial]);
+
+	const handleDelete = async (id: string) => {
+		if (!confirm(t("social.deleteConfirm"))) return;
 
 		try {
-			const data = {
-				companyId: selectedCompanyId,
-				totalEmployees: parseInt(formData.totalEmployees),
-				femaleEmployees: parseInt(formData.femaleEmployees),
-				avgTrainingHours: parseFloat(formData.avgTrainingHours),
-				workplaceIncidents: parseInt(formData.workplaceIncidents),
-				employeeTurnoverPercent: parseFloat(formData.employeeTurnoverPercent),
-				period: formData.period,
-			};
-
-			await metricsAPI.createSocial(data);
-			setMessage({
-				type: "success",
-				text: "Social metrics saved successfully!",
-			});
-
-			// Reset form
-			setFormData({
-				totalEmployees: "",
-				femaleEmployees: "",
-				avgTrainingHours: "",
-				workplaceIncidents: "",
-				employeeTurnoverPercent: "",
-				period: `${new Date().getFullYear()}-Q${Math.ceil(
-					(new Date().getMonth() + 1) / 3,
-				)}`,
-			});
+			setActionLoading(`delete-${id}`);
+			await metricsAPI.deleteSocial(id);
+			// Update store
+			deleteSocial(id, selectedCompanyId);
+			showToast.success(t("social.deleteSuccess"));
 		} catch (error: any) {
-			setMessage({
-				type: "error",
-				text: error.response?.data?.error || "Failed to save metrics",
-			});
+			showToast.error(error.response?.data?.error || "Failed to delete metric");
 		} finally {
-			setLoading(false);
+			setActionLoading(null);
 		}
 	};
+
+	// Get unique periods for chips
+	const periods = Array.from(new Set(metrics.map((m) => m.period))).sort().reverse();
+
+	// Filter metrics
+	const filteredMetrics = metrics.filter((metric) => {
+		const matchesSearch = searchTerm === "" || metric.period.toLowerCase().includes(searchTerm.toLowerCase());
+		const matchesPeriod = filterPeriod === "all" || metric.period === filterPeriod;
+		return matchesSearch && matchesPeriod;
+	});
+
+	// Prepare table columns
+	const tableColumns = [
+		{ label: t("dashboard.period"), field: "period", sortable: true },
+		{ label: t("social.totalEmployees"), field: "totalEmployees", sortable: true },
+		{ label: t("social.femaleEmployees"), field: "femaleEmployees", sortable: true },
+		{ label: t("social.avgTrainingHours"), field: "avgTrainingHours", sortable: true },
+		{ label: t("social.workplaceIncidents"), field: "workplaceIncidents", sortable: true },
+		{ label: t("social.employeeTurnover"), field: "employeeTurnoverPercent", sortable: true },
+		{
+			label: t("common.actions"),
+			field: "actions",
+			sortable: false,
+			formatFn: (value: any, row: any) => {
+				const metricId = row?._id;
+				if (!metricId) return null;
+				
+				return (
+					<div className="flex items-center justify-end gap-1">
+						<Link
+							href={`/dashboard/social/edit/${metricId}`}
+							className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
+							title={t("social.editMetric")}
+							onClick={(e) => e.stopPropagation()}
+						>
+							<Edit size={14} />
+						</Link>
+						<button
+							onClick={(e) => {
+								e.stopPropagation();
+								handleDelete(metricId);
+							}}
+							disabled={actionLoading === `delete-${metricId}`}
+							className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded transition-colors disabled:opacity-50"
+							title={t("common.delete")}
+						>
+							<Trash2 size={14} />
+						</button>
+					</div>
+				);
+			},
+		},
+	];
+
+	// Prepare table rows
+	const tableRows = filteredMetrics.map((metric) => ({
+		_id: metric._id,
+		period: metric.period,
+		totalEmployees: metric.totalEmployees != null ? metric.totalEmployees.toLocaleString() : "0",
+		femaleEmployees: metric.femaleEmployees != null ? metric.femaleEmployees.toLocaleString() : "0",
+		avgTrainingHours: metric.avgTrainingHours != null ? metric.avgTrainingHours.toFixed(1) : "0",
+		workplaceIncidents: metric.workplaceIncidents != null ? metric.workplaceIncidents.toLocaleString() : "0",
+		employeeTurnoverPercent: metric.employeeTurnoverPercent != null ? `${metric.employeeTurnoverPercent.toFixed(1)}%` : "0%",
+		actions: { _id: metric._id },
+	}));
 
 	if (companies.length === 0) {
 		return (
 			<DashboardLayout>
 				<div className="text-center py-12">
-					<p className="text-gray-600 mb-4">Please add a company first</p>
-					<a
-						href="/dashboard/company"
-						className="text-green-600 hover:underline"
-					>
-						Go to Company Page
-					</a>
+					<Users className="mx-auto text-gray-400 mb-4" size={48} />
+					<p className="text-gray-600 mb-4">{t("social.noCompany")}</p>
+					<Link href="/dashboard/company" className="text-green-600 hover:underline">
+						{t("social.goToCompany")}
+					</Link>
 				</div>
 			</DashboardLayout>
 		);
@@ -98,192 +161,121 @@ export default function SocialPage() {
 
 	return (
 		<DashboardLayout>
-			<div className="max-w-4xl mx-auto">
-				<div className="mb-8">
-					<h1 className="text-3xl font-bold text-gray-900 mb-2">
-						Social Metrics
-					</h1>
-					<p className="text-gray-600">
-						Track workforce diversity, training, and safety
-					</p>
+			<div className="space-y-4">
+				{/* Header with Create Button at Top Right */}
+				<div className="flex items-center justify-between">
+					<div>
+						<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("social.title")}</h1>
+						<p className="text-xs text-gray-600">{t("social.subtitle")}</p>
+					</div>
+					<Link
+						href="/dashboard/social/create"
+						className="flex items-center gap-1.5 px-3 py-1 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 transition-colors"
+					>
+						<Plus size={14} />
+						{t("common.create")}
+					</Link>
 				</div>
 
-				{message.text && (
-					<div
-						className={`mb-6 px-4 py-3 rounded-lg ${
-							message.type === "success"
-								? "bg-green-50 border border-green-200 text-green-700"
-								: "bg-red-50 border border-red-200 text-red-700"
-						}`}
-					>
-						{message.text}
+				{/* Period Chips - At Top */}
+				{periods.length > 0 && (
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+						<div className="flex items-center gap-2 flex-wrap">
+							<button
+								onClick={() => setFilterPeriod("all")}
+								className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+									filterPeriod === "all"
+										? "bg-green-600 text-white"
+										: "bg-gray-200 text-gray-700 hover:bg-gray-300"
+								}`}
+							>
+								{t("dashboard.allPeriods")}
+							</button>
+							{periods.slice(0, 3).map((period) => (
+								<button
+									key={period}
+									onClick={() => setFilterPeriod(period)}
+									className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+										filterPeriod === period
+											? "bg-green-600 text-white"
+											: "bg-gray-200 text-gray-700 hover:bg-gray-300"
+									}`}
+								>
+									{period}
+								</button>
+							))}
+							{periods.length > 3 && (
+								<span className="text-xs text-gray-500 px-2">
+									+{periods.length - 3} more
+								</span>
+							)}
+						</div>
 					</div>
 				)}
 
-				<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-					<div className="flex items-center gap-3 mb-6">
-						<div className="p-3 bg-green-100 rounded-lg">
-							<Users className="text-green-600" size={24} />
-						</div>
-						<div>
-							<h2 className="text-xl font-semibold text-gray-900">
-								Social Data
-							</h2>
-							<p className="text-sm text-gray-600">
-								Enter your workforce and safety metrics
-							</p>
-						</div>
-					</div>
-
-					<form onSubmit={handleSubmit} className="space-y-6">
-						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">
-								Select Company *
-							</label>
-							<select
-								required
-								value={selectedCompanyId}
-								onChange={(e) => setSelectedCompanyId(e.target.value)}
-								className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-							>
-								{companies.map((company) => (
-									<option key={company._id} value={company._id}>
-										{company.name}
-									</option>
-								))}
-							</select>
-						</div>
-
-						<div>
-							<label className="block text-sm font-medium text-gray-700 mb-2">
-								Reporting Period *
-							</label>
-							<input
-								type="text"
-								required
-								value={formData.period}
-								onChange={(e) =>
-									setFormData({ ...formData, period: e.target.value })
-								}
-								className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-								placeholder="2026-Q1"
-							/>
-						</div>
-
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Total Employees *
-								</label>
-								<input
-									type="number"
-									required
-									min="0"
-									value={formData.totalEmployees}
-									onChange={(e) =>
-										setFormData({ ...formData, totalEmployees: e.target.value })
-									}
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="100"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Female Employees *
-								</label>
-								<input
-									type="number"
-									required
-									min="0"
-									value={formData.femaleEmployees}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											femaleEmployees: e.target.value,
-										})
-									}
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="30"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Avg Training Hours per Employee *
-								</label>
-								<input
-									type="number"
-									required
-									min="0"
-									step="0.1"
-									value={formData.avgTrainingHours}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											avgTrainingHours: e.target.value,
-										})
-									}
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="20"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Workplace Incidents *
-								</label>
-								<input
-									type="number"
-									required
-									min="0"
-									value={formData.workplaceIncidents}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											workplaceIncidents: e.target.value,
-										})
-									}
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="2"
-								/>
-							</div>
-
-							<div>
-								<label className="block text-sm font-medium text-gray-700 mb-2">
-									Employee Turnover (%) *
-								</label>
-								<input
-									type="number"
-									required
-									min="0"
-									max="100"
-									step="0.1"
-									value={formData.employeeTurnoverPercent}
-									onChange={(e) =>
-										setFormData({
-											...formData,
-											employeeTurnoverPercent: e.target.value,
-										})
-									}
-									className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="12"
-								/>
-							</div>
-						</div>
-
-						<div className="flex gap-4 pt-4">
-							<button
-								type="submit"
-								disabled={loading}
-								className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
-							>
-								<Save size={20} />
-								{loading ? "Saving..." : "Save Metrics"}
-							</button>
-						</div>
-					</form>
+				{/* Company Selector */}
+				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+					<label className="block text-xs font-medium text-gray-700 mb-1">{t("dashboard.selectCompany")}</label>
+					<select
+						value={selectedCompanyId}
+						onChange={(e) => setSelectedCompanyId(e.target.value)}
+						className="w-full md:w-auto px-3 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+					>
+						{companies.map((company) => (
+							<option key={company._id} value={company._id}>
+								{company.name}
+							</option>
+						))}
+					</select>
 				</div>
+
+				{/* Metrics Table */}
+				<ETTable
+					columns={tableColumns}
+					rows={tableRows}
+					loading={loading}
+					title={t("social.title")}
+					showSearch={true}
+					showDownloadBtn={true}
+					showRefreshBtn={false}
+					showSettingsBtn={false}
+					disableDownload={filteredMetrics.length === 0}
+					placeholder={t("common.search") + " by period..."}
+					rowCount={20}
+					downloadName={`social-metrics-${new Date().toISOString().split("T")[0]}`}
+					excelColumns={{
+						period: t("dashboard.period"),
+						totalEmployees: t("social.totalEmployees"),
+						femaleEmployees: t("social.femaleEmployees"),
+						avgTrainingHours: t("social.avgTrainingHours"),
+						workplaceIncidents: t("social.workplaceIncidents"),
+						employeeTurnoverPercent: t("social.employeeTurnover"),
+					}}
+					excelRows={filteredMetrics.map((metric) => ({
+						period: metric.period,
+						totalEmployees: metric.totalEmployees,
+						femaleEmployees: metric.femaleEmployees,
+						avgTrainingHours: metric.avgTrainingHours,
+						workplaceIncidents: metric.workplaceIncidents,
+						employeeTurnoverPercent: metric.employeeTurnoverPercent,
+					}))}
+					emptyText={t("social.noMetrics")}
+					totalRecords={filteredMetrics.length}
+					onSearch={(params) => setSearchTerm(params.searchTerm || "")}
+				>
+					{filteredMetrics.length === 0 && (
+						<div className="text-center py-8">
+							<Users size={32} className="mx-auto mb-2 text-gray-300" />
+							<p className="text-xs text-gray-500 mb-2">{t("social.noMetrics")}</p>
+							<Link
+								href="/dashboard/social/create"
+								className="text-green-600 hover:underline text-xs"
+							>
+								{t("social.addFirstMetric")}
+							</Link>
+						</div>
+					)}
+				</ETTable>
 			</div>
 		</DashboardLayout>
 	);

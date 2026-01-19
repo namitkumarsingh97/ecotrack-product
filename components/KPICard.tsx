@@ -9,6 +9,7 @@ interface KPICardProps {
 		positive: boolean;
 	};
 	color?: "green" | "green" | "purple" | "red" | "yellow";
+	subtitle?: string;
 }
 
 const colorClasses = {
@@ -25,6 +26,7 @@ export default function KPICard({
 	icon: Icon,
 	trend,
 	color = "green",
+	subtitle,
 }: KPICardProps) {
 	return (
 		<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
@@ -32,6 +34,7 @@ export default function KPICard({
 				<div className="flex-1">
 					<p className="text-sm font-medium text-gray-600 mb-2">{title}</p>
 					<p className="text-3xl font-bold text-gray-900 mb-2">{value}</p>
+					{subtitle && <p className="text-xs text-gray-500">{subtitle}</p>}
 					{trend && (
 						<p
 							className={`text-sm ${

@@ -2,47 +2,50 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { companyAPI, esgAPI } from "@/lib/api";
+import { esgAPI } from "@/lib/api";
 import { FileText, Download, Calendar } from "lucide-react";
+import { useCompanyStore, useESGStore } from "@/stores";
+import { useTranslation } from "@/hooks/useTranslation";
 
 export default function ReportsPage() {
-	const [companies, setCompanies] = useState<any[]>([]);
+	const { t } = useTranslation();
 	const [selectedCompanyId, setSelectedCompanyId] = useState("");
-	const [esgScores, setEsgScores] = useState<any[]>([]);
 	const [loading, setLoading] = useState(false);
 	const [message, setMessage] = useState({ type: "", text: "" });
 
+	// Use stores
+	const { companies, selectedCompany, fetchCompanies } = useCompanyStore();
+	const { 
+		scores: esgScoresMap, 
+		fetchScores,
+		isLoading: esgLoading
+	} = useESGStore();
+
+	// Get scores for selected company
+	const esgScores = selectedCompanyId ? (esgScoresMap[selectedCompanyId] || []) : [];
+
 	useEffect(() => {
-		loadData();
-	}, []);
+		// Fetch companies from store (with caching)
+		fetchCompanies();
+	}, [fetchCompanies]);
 
-	const loadData = async () => {
-		try {
-			const companiesRes = await companyAPI.getAll();
-			setCompanies(companiesRes.data.companies);
-
-			if (companiesRes.data.companies.length > 0) {
-				const companyId = companiesRes.data.companies[0]._id;
-				setSelectedCompanyId(companyId);
-				await loadScores(companyId);
-			}
-		} catch (error) {
-			console.error("Failed to load data:", error);
+	useEffect(() => {
+		// Set initial selected company
+		if (selectedCompany?._id && !selectedCompanyId) {
+			setSelectedCompanyId(selectedCompany._id);
 		}
-	};
+	}, [selectedCompany, selectedCompanyId]);
 
-	const loadScores = async (companyId: string) => {
-		try {
-			const scoresRes = await esgAPI.getScore(companyId);
-			setEsgScores(scoresRes.data.scores);
-		} catch (error) {
-			console.error("Failed to load scores:", error);
+	useEffect(() => {
+		// Fetch scores when company changes (with caching)
+		if (selectedCompanyId) {
+			fetchScores(selectedCompanyId);
 		}
-	};
+	}, [selectedCompanyId, fetchScores]);
 
 	const handleCompanyChange = async (companyId: string) => {
 		setSelectedCompanyId(companyId);
-		await loadScores(companyId);
+		// Scores will be fetched automatically via useEffect
 	};
 
 	const handleDownloadPDF = async (period: string) => {
@@ -65,10 +68,10 @@ export default function ReportsPage() {
 
 			setMessage({
 				type: "success",
-				text: "PDF report downloaded successfully!",
+				text: t("reports.pdfDownloadSuccess"),
 			});
 		} catch (error: any) {
-			setMessage({ type: "error", text: "Failed to download PDF report" });
+			setMessage({ type: "error", text: t("reports.pdfDownloadFailed") });
 		} finally {
 			setLoading(false);
 		}
@@ -100,10 +103,10 @@ export default function ReportsPage() {
 
 			setMessage({
 				type: "success",
-				text: "Excel report downloaded successfully!",
+				text: t("reports.excelDownloadSuccess"),
 			});
 		} catch (error: any) {
-			setMessage({ type: "error", text: "Failed to download Excel report" });
+			setMessage({ type: "error", text: t("reports.excelDownloadFailed") });
 		} finally {
 			setLoading(false);
 		}
@@ -112,13 +115,13 @@ export default function ReportsPage() {
 	if (companies.length === 0) {
 		return (
 			<DashboardLayout>
-				<div className="text-center py-12">
-					<p className="text-gray-600 mb-4">Please add a company first</p>
+				<div className="text-center py-8">
+					<p className="text-xs text-gray-600 mb-3">{t("reports.noCompany")}</p>
 					<a
 						href="/dashboard/company"
-						className="text-green-600 hover:underline"
+						className="text-xs text-green-600 hover:underline"
 					>
-						Go to Company Page
+						{t("reports.goToCompany")}
 					</a>
 				</div>
 			</DashboardLayout>
@@ -128,16 +131,16 @@ export default function ReportsPage() {
 	return (
 		<DashboardLayout>
 			<div className="max-w-6xl mx-auto">
-				<div className="mb-8">
-					<h1 className="text-3xl font-bold text-gray-900 mb-2">ESG Reports</h1>
-					<p className="text-gray-600">
-						Download and share your ESG compliance reports
+				<div className="mb-4">
+					<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("reports.title")}</h1>
+					<p className="text-xs text-gray-600">
+						{t("reports.subtitle")}
 					</p>
 				</div>
 
 				{message.text && (
 					<div
-						className={`mb-6 px-4 py-3 rounded-lg ${
+						className={`mb-3 px-3 py-2 rounded-lg text-xs ${
 							message.type === "success"
 								? "bg-green-50 border border-green-200 text-green-700"
 								: "bg-red-50 border border-red-200 text-red-700"
@@ -147,14 +150,14 @@ export default function ReportsPage() {
 					</div>
 				)}
 
-				<div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
-					<label className="block text-sm font-medium text-gray-700 mb-2">
-						Select Company
+				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 mb-4">
+					<label className="block text-xs font-medium text-gray-700 mb-1">
+						{t("reports.selectCompany")}
 					</label>
 					<select
 						value={selectedCompanyId}
 						onChange={(e) => handleCompanyChange(e.target.value)}
-						className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+						className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
 					>
 						{companies.map((company) => (
 							<option key={company._id} value={company._id}>
@@ -165,99 +168,99 @@ export default function ReportsPage() {
 				</div>
 
 				{esgScores.length === 0 ? (
-					<div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-						<FileText className="mx-auto text-gray-400 mb-4" size={48} />
-						<h3 className="text-xl font-semibold text-gray-900 mb-2">
-							No Reports Available
+					<div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
+						<FileText className="mx-auto text-gray-400 mb-3" size={36} />
+						<h3 className="text-sm font-semibold text-gray-900 mb-1">
+							{t("reports.noReports")}
 						</h3>
-						<p className="text-gray-600 mb-6">
-							Add metrics and calculate ESG scores to generate reports
+						<p className="text-xs text-gray-600 mb-4">
+							{t("reports.generateReport")}
 						</p>
 						<a
 							href="/dashboard/environment"
-							className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
+							className="inline-block px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
 						>
-							Add Metrics
+							{t("dashboard.addMetrics")}
 						</a>
 					</div>
 				) : (
-					<div className="space-y-4">
-						<h2 className="text-xl font-semibold text-gray-900 mb-4">
-							Available Reports
+					<div className="space-y-3">
+						<h2 className="text-sm font-semibold text-gray-900 mb-3">
+							{t("reports.availableReports")}
 						</h2>
 
 						{esgScores.map((score) => (
 							<div
 								key={score._id}
-								className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow"
+								className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow"
 							>
 								<div className="flex items-center justify-between">
-									<div className="flex items-center gap-4">
-										<div className="p-3 bg-green-100 rounded-lg">
-											<FileText className="text-green-600" size={24} />
+									<div className="flex items-center gap-3">
+										<div className="p-2 bg-green-100 rounded-lg">
+											<FileText className="text-green-600" size={18} />
 										</div>
 										<div>
-											<h3 className="text-lg font-semibold text-gray-900">
-												ESG Report - {score.period}
+											<h3 className="text-sm font-semibold text-gray-900">
+												{t("reports.esgReport")} - {score.period}
 											</h3>
-											<div className="flex items-center gap-4 mt-1 text-sm text-gray-600">
+											<div className="flex items-center gap-3 mt-0.5 text-xs text-gray-600">
 												<span className="flex items-center gap-1">
-													<Calendar size={16} />
-													{new Date(score.calculatedAt).toLocaleDateString(
+													<Calendar size={12} />
+													{score.calculatedAt ? new Date(score.calculatedAt).toLocaleDateString(
 														"en-IN",
-													)}
+													) : "-"}
 												</span>
 												<span>
-													Overall Score:{" "}
+													{t("reports.overall")} {t("reports.score")}:{" "}
 													<strong>{score.overallScore.toFixed(1)}</strong>
 												</span>
 											</div>
 										</div>
 									</div>
 
-									<div className="flex gap-3">
+									<div className="flex gap-2">
 										<button
 											onClick={() => handleDownloadPDF(score.period)}
 											disabled={loading}
-											className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+											className="flex items-center gap-1.5 px-4 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
 										>
-											<Download size={18} />
+											<Download size={14} />
 											PDF
 										</button>
 										<button
 											onClick={() => handleDownloadExcel(score.period)}
 											disabled={loading}
-											className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+											className="flex items-center gap-1.5 px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
 										>
-											<Download size={18} />
+											<Download size={14} />
 											Excel
 										</button>
 									</div>
 								</div>
 
 								{/* Score Summary */}
-								<div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-200">
+								<div className="grid grid-cols-4 gap-3 mt-4 pt-4 border-t border-gray-200">
 									<div>
-										<p className="text-xs text-gray-600 mb-1">Overall</p>
-										<p className="text-2xl font-bold text-gray-900">
+										<p className="text-xs text-gray-600 mb-0.5">{t("reports.overall")}</p>
+										<p className="text-lg font-semibold text-gray-900">
 											{score.overallScore.toFixed(1)}
 										</p>
 									</div>
 									<div>
-										<p className="text-xs text-gray-600 mb-1">Environmental</p>
-										<p className="text-2xl font-bold text-green-600">
+										<p className="text-xs text-gray-600 mb-0.5">{t("reports.environmental")}</p>
+										<p className="text-lg font-semibold text-green-600">
 											{score.environmentalScore.toFixed(1)}
 										</p>
 									</div>
 									<div>
-										<p className="text-xs text-gray-600 mb-1">Social</p>
-										<p className="text-2xl font-bold text-green-600">
+										<p className="text-xs text-gray-600 mb-0.5">{t("reports.social")}</p>
+										<p className="text-lg font-semibold text-green-600">
 											{score.socialScore.toFixed(1)}
 										</p>
 									</div>
 									<div>
-										<p className="text-xs text-gray-600 mb-1">Governance</p>
-										<p className="text-2xl font-bold text-purple-600">
+										<p className="text-xs text-gray-600 mb-0.5">{t("reports.governance")}</p>
+										<p className="text-lg font-semibold text-purple-600">
 											{score.governanceScore.toFixed(1)}
 										</p>
 									</div>
