@@ -39,6 +39,8 @@ export default function EnvironmentPage() {
     environmental: environmentalMetricsMap,
     fetchEnvironmental,
     deleteEnvironmental,
+    clearCompanyCache,
+    setEnvironmental,
     isLoading: metricsLoading,
   } = useMetricsStore();
 
@@ -78,6 +80,29 @@ export default function EnvironmentPage() {
       showToast.success(t("environment.deleteSuccess"));
     } catch (error: any) {
       showToast.error(error.response?.data?.error || "Failed to delete metric");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (!selectedCompanyId) return;
+    
+    try {
+      // Clear cache for this company to force fresh fetch
+      clearCompanyCache(selectedCompanyId);
+      
+      // Fetch fresh data directly from server, bypassing cache
+      setActionLoading("refresh");
+      const response = await metricsAPI.getEnvironmental(selectedCompanyId);
+      const metrics = response.data.metrics || response.data.environmental || [];
+      
+      // Update store with fresh data from server
+      setEnvironmental(selectedCompanyId, metrics);
+      
+      showToast.success(t("environment.refreshSuccess") || "Data refreshed successfully");
+    } catch (error: any) {
+      showToast.error(error.response?.data?.error || "Failed to refresh data");
     } finally {
       setActionLoading(null);
     }
@@ -315,12 +340,13 @@ export default function EnvironmentPage() {
           title={t("environment.title")}
           showSearch={true}
           showDownloadBtn={true}
-          showRefreshBtn={false}
+          showRefreshBtn={true}
           showSettingsBtn={false}
           disableDownload={filteredMetrics.length === 0}
           placeholder={t("common.search") + " by period..."}
           rowCount={20}
           downloadName={`environmental-metrics-${new Date().toISOString().split("T")[0]}`}
+          onRefresh={handleRefresh}
           excelColumns={{
             period: t("dashboard.period"),
             electricityUsageKwh: t("environment.electricityUsage"),

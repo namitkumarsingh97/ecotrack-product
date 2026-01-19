@@ -194,7 +194,8 @@
     "noData": "No data collection records found",
     "startCollecting": "Start collecting data in Environment, Social, and Governance modules",
     "loadError": "Failed to load data collection status",
-    "noDataFound": "No data found matching the filters"
+    "noDataFound": "No data found matching the filters",
+    "refreshSuccess": "Data refreshed successfully"
   },
   "environment": {
     "title": "Environmental Metrics",
@@ -213,7 +214,8 @@
     "deleteSuccess": "Environmental metric deleted successfully",
     "deleteConfirm": "Are you sure you want to delete this metric?",
     "noMetrics": "No environmental metrics found",
-    "addFirstMetric": "Add your first environmental metric"
+    "addFirstMetric": "Add your first environmental metric",
+    "refreshSuccess": "Environmental data refreshed successfully"
   },
   "social": {
     "title": "Social Metrics",

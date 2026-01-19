@@ -15,6 +15,8 @@ export default function CreateEnvironmentPage() {
 	const router = useRouter();
 	const { t } = useTranslation();
 	const { companies, selectedCompany, fetchCompanies } = useCompanyStore();
+	const [periods, setPeriods] = useState<string[]>([]);
+	const [loadingPeriods, setLoadingPeriods] = useState(false);
 	const [formData, setFormData] = useState({
 		period: `${new Date().getFullYear()}-Q${Math.ceil((new Date().getMonth() + 1) / 3)}`,
 		companyId: "",
@@ -71,6 +73,22 @@ export default function CreateEnvironmentPage() {
 			}));
 		}
 	}, [fetchCompanies, companies, selectedCompany]);
+
+	useEffect(() => {
+		const loadPeriods = async () => {
+			setLoadingPeriods(true);
+			try {
+				const response = await metricsAPI.getPeriods();
+				setPeriods(response.data.periods || []);
+			} catch (error: any) {
+				console.error('Failed to load periods:', error);
+				showToast.error("Failed to load periods");
+			} finally {
+				setLoadingPeriods(false);
+			}
+		};
+		loadPeriods();
+	}, []);
 
 	const handleSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -155,7 +173,7 @@ export default function CreateEnvironmentPage() {
 
 	return (
 		<DashboardLayout>
-			<div className="max-w-6xl mx-auto">
+			<div className="px-4 md:px-6 lg:px-8">
 				<div className="mb-4">
 					<Link
 						href="/dashboard/environment"
@@ -164,10 +182,37 @@ export default function CreateEnvironmentPage() {
 						<ArrowLeft size={14} />
 						{t("common.back")} {t("environment.title")}
 					</Link>
-					<div className="flex items-center justify-between">
-						<div>
-							<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("environment.createMetric")}</h1>
-							<p className="text-xs text-gray-600">{t("environment.addNewMetrics")}</p>
+					<div className="flex items-center justify-between mb-2">
+						<div className="flex items-center gap-4 flex-1">
+							<div>
+								<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("environment.createMetric")}</h1>
+								<p className="text-xs text-gray-600">{t("environment.addNewMetrics")}</p>
+							</div>
+							{/* Period Selection */}
+							<div className="flex flex-col">
+								<label className="block text-xs font-medium text-gray-700 mb-1">
+									{t("dashboard.period")} *
+								</label>
+								<select
+									required
+									value={formData.period}
+									onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+									disabled={loadingPeriods}
+									className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+								>
+									{loadingPeriods ? (
+										<option value="">{t("common.loading")}...</option>
+									) : periods.length > 0 ? (
+										periods.map((period) => (
+											<option key={period} value={period}>
+												{period}
+											</option>
+										))
+									) : (
+										<option value={formData.period}>{formData.period}</option>
+									)}
+								</select>
+							</div>
 						</div>
 						<div className="flex gap-2">
 							<Link
@@ -196,23 +241,6 @@ export default function CreateEnvironmentPage() {
 
 				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
 					<form onSubmit={handleSubmit} className="space-y-4">
-						{/* Period Selection */}
-						<div className="pb-4 border-b border-gray-200">
-							<div>
-								<label className="block text-xs font-medium text-gray-700 mb-1">
-									{t("dashboard.period")} *
-								</label>
-								<input
-									type="text"
-									required
-									value={formData.period}
-									onChange={(e) => setFormData({ ...formData, period: e.target.value })}
-									className="w-full md:w-auto px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="2026-Q1"
-								/>
-								<p className="text-xs text-gray-500 mt-0.5">{t("environment.periodFormat")}</p>
-							</div>
-						</div>
 
 						{/* Tab Form Component */}
 						<EnvironmentFormTabs

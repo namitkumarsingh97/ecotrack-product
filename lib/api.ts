@@ -121,6 +121,8 @@ export const metricsAPI = {
 	getByCompany: (companyId: string) => api.get(`/metrics/${companyId}`),
 	// Data Collection Hub
 	getCollectionHub: (companyId: string) => api.get(`/metrics/collection-hub/${companyId}`),
+	// Periods
+	getPeriods: () => api.get(`/metrics/periods`),
 };
 
 // ESG

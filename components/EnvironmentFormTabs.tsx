@@ -17,11 +17,43 @@ export default function EnvironmentFormTabs({
 	const { t } = useTranslation();
 	const [activeTab, setActiveTab] = useState("energy");
 
+	// Count required fields in each tab
+	const getRequiredFieldsCount = (tabKey: string): number => {
+		switch (tabKey) {
+			case "energy":
+				// Required: electricityKwh, fuelLitres, scope1Emissions, scope2Emissions
+				return 4;
+			case "water":
+				// Required: waterUsageKL, totalWasteTonnes
+				return 2;
+			case "resource":
+				// No required fields
+				return 0;
+			case "policies":
+				// No required fields (all checkboxes/optional)
+				return 0;
+			default:
+				return 0;
+		}
+	};
+
 	const tabs: Tab[] = [
-		{ key: "energy", label: t("environment.tabs.energyEmissions") || "Energy & Emissions" },
-		{ key: "water", label: t("environment.tabs.waterWaste") || "Water & Waste" },
-		{ key: "resource", label: t("environment.tabs.resourceEfficiency") || "Resource Efficiency" },
-		{ key: "policies", label: t("environment.tabs.policiesCompliance") || "Policies & Compliance" },
+		{ 
+			key: "energy", 
+			label: t("environment.tabs.energyEmissions") || "Energy & Emissions"
+		},
+		{ 
+			key: "water", 
+			label: t("environment.tabs.waterWaste") || "Water & Waste"
+		},
+		{ 
+			key: "resource", 
+			label: t("environment.tabs.resourceEfficiency") || "Resource Efficiency"
+		},
+		{ 
+			key: "policies", 
+			label: t("environment.tabs.policiesCompliance") || "Policies & Compliance"
+		},
 	];
 
 	return (
@@ -29,7 +61,15 @@ export default function EnvironmentFormTabs({
 			{/* Tab 1: Energy & Emissions */}
 			{activeTab === "energy" && (
 				<div className="space-y-3">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("environment.tabs.energyEmissions") || "Energy & Emissions"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("energy")}
+						</span>
+					</div>
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 						<div>
 							<label className="block text-xs font-medium text-gray-700 mb-1">
 								Total Energy Consumption
@@ -195,7 +235,15 @@ export default function EnvironmentFormTabs({
 			{/* Tab 2: Water & Waste */}
 			{activeTab === "water" && (
 				<div className="space-y-3">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("environment.tabs.waterWaste") || "Water & Waste"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("water")}
+						</span>
+					</div>
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 						<div>
 							<label className="block text-xs font-medium text-gray-700 mb-1">
 								Water Usage (KL) *
@@ -368,7 +416,7 @@ export default function EnvironmentFormTabs({
 							/>
 						</div>
 
-						<div className="md:col-span-2">
+						<div className="md:col-span-2 lg:col-span-4">
 							<label className="block text-xs font-medium text-gray-700 mb-1">
 								Wastewater Treatment Metrics
 							</label>
@@ -383,7 +431,7 @@ export default function EnvironmentFormTabs({
 							/>
 						</div>
 
-						<div className="md:col-span-2">
+						<div className="md:col-span-2 lg:col-span-4">
 							<label className="block text-xs font-medium text-gray-700 mb-1">
 								Water Reuse/Recycling Practices
 							</label>
@@ -404,8 +452,16 @@ export default function EnvironmentFormTabs({
 			{/* Tab 3: Resource Efficiency */}
 			{activeTab === "resource" && (
 				<div className="space-y-3">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-						<div className="md:col-span-2">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("environment.tabs.resourceEfficiency") || "Resource Efficiency"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("resource")}
+						</span>
+					</div>
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+						<div className="md:col-span-2 lg:col-span-4">
 							<label className="block text-xs font-medium text-gray-700 mb-1">
 								Recycling Initiatives
 							</label>
@@ -420,7 +476,7 @@ export default function EnvironmentFormTabs({
 							/>
 						</div>
 
-						<div className="md:col-span-2">
+						<div className="md:col-span-2 lg:col-span-4">
 							<label className="block text-xs font-medium text-gray-700 mb-1">
 								Materials Reuse
 							</label>
@@ -435,7 +491,7 @@ export default function EnvironmentFormTabs({
 							/>
 						</div>
 
-						<div className="md:col-span-2">
+						<div className="md:col-span-2 lg:col-span-4">
 							<label className="block text-xs font-medium text-gray-700 mb-1">
 								Energy Savings Programs
 							</label>
@@ -450,7 +506,7 @@ export default function EnvironmentFormTabs({
 							/>
 						</div>
 
-						<div className="md:col-span-2">
+						<div className="md:col-span-2 lg:col-span-4">
 							<label className="block text-xs font-medium text-gray-700 mb-1">
 								Water Efficiency Improvements
 							</label>
@@ -471,8 +527,16 @@ export default function EnvironmentFormTabs({
 			{/* Tab 4: Policies & Compliance */}
 			{activeTab === "policies" && (
 				<div className="space-y-3">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-						<div className="md:col-span-2">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("environment.tabs.policiesCompliance") || "Policies & Compliance"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("policies")}
+						</span>
+					</div>
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+						<div className="md:col-span-2 lg:col-span-4">
 							<label className="flex items-center gap-2">
 								<input
 									type="checkbox"
@@ -489,7 +553,7 @@ export default function EnvironmentFormTabs({
 						</div>
 
 						{formData.environmentalPolicyExists && (
-							<div className="md:col-span-2">
+							<div className="md:col-span-2 lg:col-span-4">
 								<label className="block text-xs font-medium text-gray-700 mb-1">
 									Environmental Policy Document (URL or reference)
 								</label>
@@ -505,7 +569,7 @@ export default function EnvironmentFormTabs({
 							</div>
 						)}
 
-						<div className="md:col-span-2">
+						<div className="md:col-span-2 lg:col-span-4">
 							<label className="flex items-center gap-2">
 								<input
 									type="checkbox"
@@ -521,7 +585,7 @@ export default function EnvironmentFormTabs({
 							</label>
 						</div>
 
-						<div className="md:col-span-2">
+						<div className="md:col-span-2 lg:col-span-4">
 							<label className="flex items-center gap-2">
 								<input
 									type="checkbox"
@@ -538,7 +602,7 @@ export default function EnvironmentFormTabs({
 						</div>
 
 						{formData.environmentalRiskAssessments && (
-							<div className="md:col-span-2">
+							<div className="md:col-span-2 lg:col-span-4">
 								<label className="block text-xs font-medium text-gray-700 mb-1">
 									Risk Assessment Details
 								</label>

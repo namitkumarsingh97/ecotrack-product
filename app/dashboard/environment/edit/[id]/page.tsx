@@ -60,40 +60,97 @@ export default function EditEnvironmentPage() {
 	});
 	const [loading, setLoading] = useState(false);
 	const [loadingData, setLoadingData] = useState(true);
+	const [periods, setPeriods] = useState<string[]>([]);
+	const [loadingPeriods, setLoadingPeriods] = useState(false);
 
 	useEffect(() => {
 		loadMetric();
 	}, [id]);
+
+	useEffect(() => {
+		const loadPeriods = async () => {
+			setLoadingPeriods(true);
+			try {
+				const response = await metricsAPI.getPeriods();
+				const loadedPeriods = response.data.periods || [];
+				
+				// If formData.period exists and is not in the list, add it
+				if (formData.period && !loadedPeriods.includes(formData.period)) {
+					loadedPeriods.push(formData.period);
+					loadedPeriods.sort().reverse(); // Sort descending
+				}
+				
+				setPeriods(loadedPeriods);
+			} catch (error: any) {
+				console.error('Failed to load periods:', error);
+				showToast.error("Failed to load periods");
+			} finally {
+				setLoadingPeriods(false);
+			}
+		};
+		loadPeriods();
+	}, [formData.period]);
 
 	const loadMetric = async () => {
 		try {
 			setLoadingData(true);
 			const response = await metricsAPI.getEnvironmentalById(id);
 			const metric = response.data.metric;
+			
+			if (!metric) {
+				showToast.error("Metric not found");
+				router.push("/dashboard/environment");
+				return;
+			}
+
+			// Helper function to safely convert number to string
+			const numToString = (value: any): string => {
+				if (value === null || value === undefined) return "";
+				if (typeof value === "number") return value.toString();
+				return String(value);
+			};
+
+			// Helper function to safely convert ObjectId to string
+			const idToString = (value: any): string => {
+				if (!value) return "";
+				if (typeof value === "object" && value.toString) return value.toString();
+				return String(value);
+			};
+
+			const periodValue = metric.period || "";
+			
+			// Ensure the period from backend is in the periods list
+			if (periodValue && !periods.includes(periodValue)) {
+				setPeriods((prev) => {
+					const updated = [...prev, periodValue];
+					return updated.sort().reverse(); // Sort descending
+				});
+			}
+
 			setFormData({
-				period: metric.period || "",
-				companyId: metric.companyId || "",
+				period: periodValue,
+				companyId: idToString(metric.companyId),
 				// Tab 1: Energy & Emissions
-				totalEnergyConsumption: metric.totalEnergyConsumption?.toString() || "",
-				electricityKwh: metric.electricityKwh?.toString() || metric.electricityUsageKwh?.toString() || "",
-				fuelLitres: metric.fuelLitres?.toString() || metric.fuelConsumptionLitres?.toString() || "",
-				renewableEnergyPercent: metric.renewableEnergyPercent?.toString() || "",
-				nonRenewableEnergyPercent: metric.nonRenewableEnergyPercent?.toString() || "",
-				scope1Emissions: metric.scope1Emissions?.toString() || "",
-				scope2Emissions: metric.scope2Emissions?.toString() || "",
-				scope3Emissions: metric.scope3Emissions?.toString() || "",
-				emissionsIntensity: metric.emissionsIntensity?.toString() || "",
+				totalEnergyConsumption: numToString(metric.totalEnergyConsumption),
+				electricityKwh: numToString(metric.electricityKwh) || numToString(metric.electricityUsageKwh),
+				fuelLitres: numToString(metric.fuelLitres) || numToString(metric.fuelConsumptionLitres),
+				renewableEnergyPercent: numToString(metric.renewableEnergyPercent),
+				nonRenewableEnergyPercent: numToString(metric.nonRenewableEnergyPercent),
+				scope1Emissions: numToString(metric.scope1Emissions),
+				scope2Emissions: numToString(metric.scope2Emissions),
+				scope3Emissions: numToString(metric.scope3Emissions),
+				emissionsIntensity: numToString(metric.emissionsIntensity),
 				// Tab 2: Water & Waste
-				waterUsageKL: metric.waterUsageKL?.toString() || "",
-				waterSourceSurface: metric.waterSourceSurface?.toString() || "",
-				waterSourceGroundwater: metric.waterSourceGroundwater?.toString() || "",
-				waterSourceMunicipal: metric.waterSourceMunicipal?.toString() || "",
-				waterSourceOther: metric.waterSourceOther?.toString() || "",
-				totalWasteTonnes: metric.totalWasteTonnes?.toString() || "",
-				hazardousWasteTonnes: metric.hazardousWasteTonnes?.toString() || "",
-				nonHazardousWasteTonnes: metric.nonHazardousWasteTonnes?.toString() || "",
-				recycledWasteTonnes: metric.recycledWasteTonnes?.toString() || "",
-				divertedFromDisposalTonnes: metric.divertedFromDisposalTonnes?.toString() || "",
+				waterUsageKL: numToString(metric.waterUsageKL),
+				waterSourceSurface: numToString(metric.waterSourceSurface),
+				waterSourceGroundwater: numToString(metric.waterSourceGroundwater),
+				waterSourceMunicipal: numToString(metric.waterSourceMunicipal),
+				waterSourceOther: numToString(metric.waterSourceOther),
+				totalWasteTonnes: numToString(metric.totalWasteTonnes),
+				hazardousWasteTonnes: numToString(metric.hazardousWasteTonnes),
+				nonHazardousWasteTonnes: numToString(metric.nonHazardousWasteTonnes),
+				recycledWasteTonnes: numToString(metric.recycledWasteTonnes),
+				divertedFromDisposalTonnes: numToString(metric.divertedFromDisposalTonnes),
 				wastewaterTreatmentMetrics: metric.wastewaterTreatmentMetrics || "",
 				waterReuseRecyclingPractices: metric.waterReuseRecyclingPractices || "",
 				// Tab 3: Resource Efficiency
@@ -102,19 +159,20 @@ export default function EditEnvironmentPage() {
 				energySavingsPrograms: metric.energySavingsPrograms || "",
 				waterEfficiencyImprovements: metric.waterEfficiencyImprovements || "",
 				// Tab 4: Policies & Compliance
-				environmentalPolicyExists: metric.environmentalPolicyExists || false,
+				environmentalPolicyExists: Boolean(metric.environmentalPolicyExists),
 				environmentalPolicyDocument: metric.environmentalPolicyDocument || "",
-				complianceWithLocalLaws: metric.complianceWithLocalLaws || false,
-				environmentalRiskAssessments: metric.environmentalRiskAssessments || false,
+				complianceWithLocalLaws: Boolean(metric.complianceWithLocalLaws),
+				environmentalRiskAssessments: Boolean(metric.environmentalRiskAssessments),
 				riskAssessmentDetails: metric.riskAssessmentDetails || "",
 				// Legacy fields
-				electricityUsageKwh: metric.electricityUsageKwh?.toString() || "",
-				fuelConsumptionLitres: metric.fuelConsumptionLitres?.toString() || "",
-				wasteGeneratedKg: metric.wasteGeneratedKg?.toString() || "",
-				carbonEmissionsTons: metric.carbonEmissionsTons?.toString() || "",
+				electricityUsageKwh: numToString(metric.electricityUsageKwh),
+				fuelConsumptionLitres: numToString(metric.fuelConsumptionLitres),
+				wasteGeneratedKg: numToString(metric.wasteGeneratedKg),
+				carbonEmissionsTons: numToString(metric.carbonEmissionsTons),
 			});
 		} catch (error: any) {
-			showToast.error(t("environment.loadFailed"));
+			console.error("Error loading metric:", error);
+			showToast.error(error.response?.data?.error || t("environment.loadFailed") || "Failed to load metric");
 			router.push("/dashboard/environment");
 		} finally {
 			setLoadingData(false);
@@ -197,7 +255,7 @@ export default function EditEnvironmentPage() {
 
 	return (
 		<DashboardLayout>
-			<div className="max-w-6xl mx-auto">
+			<div className="px-4 md:px-6 lg:px-8">
 				<div className="mb-4">
 					<Link
 						href="/dashboard/environment"
@@ -206,10 +264,45 @@ export default function EditEnvironmentPage() {
 						<ArrowLeft size={14} />
 						{t("common.back")} {t("environment.title")}
 					</Link>
-					<div className="flex items-center justify-between">
-						<div>
-							<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("environment.editMetric")}</h1>
-							<p className="text-xs text-gray-600">{t("environment.updateMetrics")}</p>
+					<div className="flex items-center justify-between mb-2">
+						<div className="flex items-center gap-4 flex-1">
+							<div>
+								<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("environment.editMetric")}</h1>
+								<p className="text-xs text-gray-600">{t("environment.updateMetrics")}</p>
+							</div>
+							{/* Period Selection */}
+							<div className="flex flex-col">
+								<label className="block text-xs font-medium text-gray-700 mb-1">
+									{t("dashboard.period")} *
+								</label>
+								<select
+									required
+									value={formData.period || ""}
+									onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+									disabled={loadingPeriods || loadingData}
+									className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+								>
+									{loadingPeriods || loadingData ? (
+										<option value="">{t("common.loading")}...</option>
+									) : periods.length > 0 ? (
+										<>
+											{!formData.period && <option value="">Select period</option>}
+											{periods.map((period) => (
+												<option key={period} value={period}>
+													{period}
+												</option>
+											))}
+											{formData.period && !periods.includes(formData.period) && (
+												<option value={formData.period}>{formData.period}</option>
+											)}
+										</>
+									) : formData.period ? (
+										<option value={formData.period}>{formData.period}</option>
+									) : (
+										<option value="">No periods available</option>
+									)}
+								</select>
+							</div>
 						</div>
 						<div className="flex gap-2">
 							<Link
@@ -238,23 +331,6 @@ export default function EditEnvironmentPage() {
 
 				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
 					<form onSubmit={handleSubmit} className="space-y-4">
-						{/* Period Selection */}
-						<div className="pb-4 border-b border-gray-200">
-							<div>
-								<label className="block text-xs font-medium text-gray-700 mb-1">
-									{t("dashboard.period")} *
-								</label>
-								<input
-									type="text"
-									required
-									value={formData.period}
-									onChange={(e) => setFormData({ ...formData, period: e.target.value })}
-									className="w-full md:w-auto px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="2026-Q1"
-								/>
-								<p className="text-xs text-gray-500 mt-0.5">{t("environment.periodFormat")}</p>
-							</div>
-						</div>
 
 						{/* Tab Form Component */}
 						<EnvironmentFormTabs

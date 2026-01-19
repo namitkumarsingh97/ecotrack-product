@@ -7,6 +7,7 @@ export interface Tab {
 	key: string;
 	label: string;
 	icon?: ReactNode;
+	requiredCount?: number;
 }
 
 type ValidationStatus = "pending" | "validated" | "none";
@@ -39,14 +40,21 @@ export default function ETTabs({
 							key={tab.key}
 							type="button"
 							onClick={() => onTabChange(tab.key)}
-							className={`px-4 py-1.5 cursor-pointer rounded-t-md font-semibold border-b-2 focus:outline-none transition text-xs whitespace-nowrap flex-shrink-0 inline-flex items-center gap-1.5 ${
+							className={`px-4 py-1.5 cursor-pointer rounded-t-md font-semibold border-b-2 focus:outline-none transition text-xs whitespace-nowrap flex-shrink-0 inline-flex items-center justify-between gap-2 min-w-[120px] ${
 								activeTab === tab.key
 									? "bg-green-600 text-white border-green-600"
 									: "bg-gray-100 text-gray-700 border-transparent hover:bg-green-100"
 							}`}
 						>
-							{tab.icon && <span className="text-xs">{tab.icon}</span>}
-							{tab.label}
+							<div className="flex items-center gap-1.5">
+								{tab.icon && <span className="text-xs">{tab.icon}</span>}
+								{tab.label}
+							</div>
+							{tab.requiredCount !== undefined && tab.requiredCount > 0 && (
+								<span className="text-red-500 font-semibold ml-auto">
+									{tab.requiredCount}
+								</span>
+							)}
 							{validationConfig && validationConfig[tab.key] === "validated" && (
 								<span title="All required fields filled">
 									<CheckCircle2 size={12} className="text-green-500 ml-1" />

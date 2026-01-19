@@ -76,6 +76,7 @@ export default function DataCollectionHubPage() {
 		try {
 			const response = await metricsAPI.getCollectionHub(selectedCompany._id);
 			setData(response.data);
+			showToast.success(t("dataCollection.refreshSuccess") || "Data refreshed successfully");
 		} catch (error: any) {
 			showToast.error(error.response?.data?.error || t("dataCollection.loadError"));
 		} finally {
@@ -399,14 +400,15 @@ export default function DataCollectionHubPage() {
 				<ETTable
 					columns={tableColumns}
 					rows={tableRows}
-					loading={false}
+					loading={loading}
 					title={t("dataCollection.collectionStatus")}
 					showSearch={false}
 					showDownloadBtn={true}
-					showRefreshBtn={false}
+					showRefreshBtn={true}
 					showSettingsBtn={false}
 					disableDownload={filteredStatus.length === 0}
 					downloadName={`data-collection-${new Date().toISOString().split("T")[0]}`}
+					onRefresh={loadCollectionHub}
 					excelColumns={{
 						period: t("dataCollection.period"),
 						status: t("dataCollection.status"),
