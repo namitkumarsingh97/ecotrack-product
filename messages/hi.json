@@ -28,7 +28,9 @@
     "settings": "सेटिंग्स",
     "profile": "प्रोफ़ाइल",
     "company": "कंपनी",
-    "dashboard": "डैशबोर्ड"
+    "dashboard": "डैशबोर्ड",
+    "optional": "वैकल्पिक",
+    "refresh": "रिफ्रेश"
   },
   "auth": {
     "loginTitle": "वापसी पर स्वागत है",
@@ -87,12 +89,38 @@
     "renewableEnergy": "नवीकरणीय ऊर्जा",
     "ofTotalEnergy": "कुल ऊर्जा का",
     "tons": "टन",
+    "environmentalMetrics": "पर्यावरणीय मेट्रिक्स",
+    "noCompanySelected": "कोई कंपनी चयनित नहीं",
+    "selectCompanyFromNav": "कृपया शीर्ष नेविगेशन से एक कंपनी चुनें",
+    "more": "अधिक",
     "environmentalData": "पर्यावरण डेटा",
     "environmentalDataDesc": "ऊर्जा, पानी, अपशिष्ट और उत्सर्जन ट्रैक करें",
     "socialMetrics": "सामाजिक मेट्रिक्स",
     "socialMetricsDesc": "कार्यबल और सुरक्षा डेटा की निगरानी करें",
     "governanceInfo": "शासन जानकारी",
     "governanceInfoDesc": "बोर्ड और अनुपालन विवरण अपडेट करें"
+  },
+  "esgScorecard": {
+    "title": "ESG स्कोरकार्ड",
+    "subtitle": "व्यापक ESG प्रदर्शन अवलोकन",
+    "overallScore": "कुल ESG स्कोर",
+    "scoreDistribution": "स्कोर वितरण",
+    "scoreTrend": "स्कोर ट्रेंड",
+    "vsPrevious": "बनाम",
+    "noScoreYet": "कोई ESG स्कोर उपलब्ध नहीं",
+    "addMetricsToCalculate": "अपना ESG स्कोर गणना करने के लिए पर्यावरण, सामाजिक और शासन मॉड्यूल में मेट्रिक्स जोड़ें",
+    "noCompanySelected": "कोई कंपनी चयनित नहीं",
+    "selectCompanyFromNav": "कृपया शीर्ष नेविगेशन से एक कंपनी चुनें",
+    "latestPeriod": "नवीनतम अवधि",
+    "refresh": "रिफ्रेश",
+    "recalculate": "स्कोर पुनर्गणना करें",
+    "scoreRecalculated": "ESG स्कोर सफलतापूर्वक पुनर्गणना किया गया",
+    "recalculateError": "स्कोर पुनर्गणना करने में विफल",
+    "loadError": "स्कोरकार्ड लोड करने में विफल",
+    "calculatedAt": "अंतिम गणना",
+    "scoringMethod": "स्कोरिंग विधि",
+    "weightedAverage": "भारित औसत (E: 40%, S: 30%, G: 30%)",
+    "noTrendData": "कोई ट्रेंड डेटा उपलब्ध नहीं"
   },
   "company": {
     "title": "कंपनी की जानकारी",
@@ -257,6 +285,11 @@
     "social": "सामाजिक",
     "governance": "शासन",
     "reports": "रिपोर्ट्स",
+    "esgScorecard": "ESG स्कोरकार्ड",
+    "dataCollectionHub": "डेटा संग्रह हब",
+    "evidenceVault": "साक्ष्य वॉल्ट",
+    "complianceCenter": "अनुपालन केंद्र",
+    "alertsTasks": "अलर्ट और कार्य",
     "admin": "एडमिन"
   }
 }

@@ -394,7 +394,7 @@ export default function ETTable({
 								</tbody>
 							</table>
 						</div>
-						{paginationEnabled && totalPages > 1 && (
+						{paginationEnabled && (
 							<div className="bg-gray-50 border-t border-gray-200 px-2 py-1.5 flex items-center justify-between">
 								<div className="text-xs text-gray-600">
 									Showing {startIndex + 1} to {Math.min(startIndex + rowCount, sortedRows.length)} of{" "}
@@ -403,17 +403,17 @@ export default function ETTable({
 								<div className="flex items-center gap-1">
 									<button
 										onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-										disabled={currentPage === 1}
+										disabled={currentPage === 1 || totalPages <= 1}
 										className="p-1 text-gray-600 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
 									>
 										<ChevronLeft size={14} />
 									</button>
 									<span className="text-xs text-gray-600 px-2">
-										Page {currentPage} of {totalPages}
+										Page {currentPage} of {totalPages || 1}
 									</span>
 									<button
 										onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-										disabled={currentPage === totalPages}
+										disabled={currentPage === totalPages || totalPages <= 1}
 										className="p-1 text-gray-600 hover:bg-gray-200 rounded disabled:opacity-50 disabled:cursor-not-allowed"
 									>
 										<ChevronRight size={14} />

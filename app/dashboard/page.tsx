@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import KPICard from "@/components/KPICard";
-import ScoreCard from "@/components/ScoreCard";
 import { SkeletonKPICard } from "@/components/Skeleton";
 import PieChart from "@/components/charts/PieChart";
 import DoughnutChart from "@/components/charts/DoughnutChart";
@@ -123,8 +121,8 @@ export default function DashboardPage() {
 	// Environmental metrics trend
 	const envTrendData = filteredEnvMetrics.slice(0, 6).reverse().map((metric) => ({
 		period: metric.period,
-		"Carbon (tons)": metric.carbonEmissionsTons,
-		"Renewable (%)": metric.renewableEnergyPercent,
+		"Carbon (tons)": metric.carbonEmissionsTons || 0,
+		"Renewable (%)": metric.renewableEnergyPercent || 0,
 	}));
 
 	if (loading) {
@@ -140,19 +138,14 @@ export default function DashboardPage() {
 		);
 	}
 
-	if (companies.length === 0) {
+
+	if (!selectedCompany) {
 		return (
 			<DashboardLayout>
-				<div className="max-w-2xl mx-auto text-center py-12">
-					<Building2 className="mx-auto text-gray-400 mb-4" size={64} />
-					<h2 className="text-2xl font-bold text-gray-900 mb-4">{t("dashboard.welcomeTitle")}</h2>
-					<p className="text-gray-600 mb-8">{t("dashboard.welcomeSubtitle")}</p>
-					<Link
-						href="/dashboard/company"
-						className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
-					>
-						{t("dashboard.addCompany")}
-					</Link>
+				<div className="text-center py-12">
+					<Building2 className="mx-auto text-gray-400 mb-4" size={48} />
+					<p className="text-gray-600 mb-4">{t("dashboard.noCompanySelected")}</p>
+					<p className="text-xs text-gray-500 mb-2">{t("dashboard.selectCompanyFromNav")}</p>
 				</div>
 			</DashboardLayout>
 		);
@@ -161,7 +154,7 @@ export default function DashboardPage() {
 	return (
 		<DashboardLayout>
 			<div className="space-y-4">
-				{/* Header with Period Filter */}
+				{/* Header */}
 				<div className="flex items-center justify-between">
 					<div>
 						<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("dashboard.title")}</h1>
@@ -169,62 +162,56 @@ export default function DashboardPage() {
 							{selectedCompany?.name} - {selectedCompany?.reportingYear}
 						</p>
 					</div>
-					{periods.length > 0 && (
-						<div className="flex items-center gap-2">
-							<select
-								value={selectedPeriod}
-								onChange={(e) => setSelectedPeriod(e.target.value)}
-								className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-							>
-								<option value="all">{t("dashboard.allPeriods")}</option>
-								{periods.map((period) => (
-									<option key={period} value={period}>
-										{period}
-									</option>
-								))}
-							</select>
-						</div>
-					)}
 				</div>
 
-				{/* KPI Cards */}
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-					<KPICard
-						title={t("dashboard.overallScore")}
-						value={latestScore ? latestScore.overallScore.toFixed(1) : "N/A"}
-						icon={TrendingUp}
-						color="green"
-						subtitle={latestScore ? `${t("dashboard.period")}: ${latestScore.period}` : t("dashboard.noScoreYet")}
-					/>
-					<KPICard
-						title={t("environment.title")}
-						value={filteredEnvMetrics.length}
-						icon={Leaf}
-						color="green"
-						subtitle={`${periods.length} ${t("dashboard.periodsTracked")}`}
-					/>
-					<KPICard
-						title={t("social.title")}
-						value={filteredSocialMetrics.length}
-						icon={Users}
-						color="blue"
-						subtitle={`${periods.length} ${t("dashboard.periodsTracked")}`}
-					/>
-					<KPICard
-						title={t("governance.title")}
-						value={filteredGovMetrics.length}
-						icon={Shield}
-						color="purple"
-						subtitle={`${periods.length} ${t("dashboard.periodsTracked")}`}
-					/>
+				{/* Stats Cards */}
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+						<div className="text-xs text-gray-600">{t("dashboard.overallScore")}</div>
+						<div className="text-lg font-semibold text-gray-900">
+							{latestScore ? latestScore.overallScore.toFixed(1) : "N/A"}
+						</div>
+						{latestScore && (
+							<div className="text-xs text-gray-500 mt-0.5">
+								{t("dashboard.period")}: {latestScore.period}
+							</div>
+						)}
+					</div>
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+						<div className="text-xs text-gray-600">{t("environment.title")}</div>
+						<div className="text-lg font-semibold text-green-600">
+							{filteredEnvMetrics.length}
+						</div>
+						<div className="text-xs text-gray-500 mt-0.5">
+							{periods.length} {t("dashboard.periodsTracked")}
+						</div>
+					</div>
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+						<div className="text-xs text-gray-600">{t("social.title")}</div>
+						<div className="text-lg font-semibold text-blue-600">
+							{filteredSocialMetrics.length}
+						</div>
+						<div className="text-xs text-gray-500 mt-0.5">
+							{periods.length} {t("dashboard.periodsTracked")}
+						</div>
+					</div>
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+						<div className="text-xs text-gray-600">{t("governance.title")}</div>
+						<div className="text-lg font-semibold text-purple-600">
+							{filteredGovMetrics.length}
+						</div>
+						<div className="text-xs text-gray-500 mt-0.5">
+							{periods.length} {t("dashboard.periodsTracked")}
+						</div>
+					</div>
 				</div>
 
 				{/* Charts Row 1: ESG Scores */}
 				{latestScore && (
-					<div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+					<div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
 						{/* ESG Score Distribution - Doughnut Chart */}
-						<div className="bg-white rounded-lg border border-gray-200 p-2">
-							<h3 className="text-sm font-semibold text-gray-900 mb-2">{t("dashboard.esgScoreDistribution")}</h3>
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+							<h3 className="text-xs font-semibold text-gray-900 mb-2">{t("dashboard.esgScoreDistribution")}</h3>
 							<div className="flex items-center justify-center">
 								<DoughnutChart
 									data={esgScoreDistribution}
@@ -256,8 +243,8 @@ export default function DashboardPage() {
 						</div>
 
 						{/* ESG Score Trend - Line Chart */}
-						<div className="bg-white rounded-lg border border-gray-200 p-2">
-							<h3 className="text-sm font-semibold text-gray-900 mb-2">{t("dashboard.esgScoreTrend")}</h3>
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+							<h3 className="text-xs font-semibold text-gray-900 mb-2">{t("dashboard.esgScoreTrend")}</h3>
 							{scoreTrendData.length > 0 ? (
 								<LineChart
 									data={scoreTrendData}
@@ -283,16 +270,16 @@ export default function DashboardPage() {
 				{latestEnvMetric && (
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
 						{/* Environmental Metrics Distribution - Pie Chart */}
-						<div className="bg-white rounded-lg border border-gray-200 p-2">
-							<h3 className="text-sm font-semibold text-gray-900 mb-2">
-								Environmental Metrics - {latestEnvMetric.period}
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+							<h3 className="text-xs font-semibold text-gray-900 mb-2">
+								{t("dashboard.environmentalMetrics")} - {latestEnvMetric.period}
 							</h3>
 							<PieChart data={environmentalChartData} height={200} showLegend={true} />
 						</div>
 
 						{/* Environmental Trend - Bar Chart */}
-						<div className="bg-white rounded-lg border border-gray-200 p-2">
-							<h3 className="text-sm font-semibold text-gray-900 mb-2">{t("dashboard.carbonEmissionsTrend")}</h3>
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+							<h3 className="text-xs font-semibold text-gray-900 mb-2">{t("dashboard.carbonEmissionsTrend")}</h3>
 							{envTrendData.length > 0 ? (
 								<BarChart
 									data={envTrendData}
@@ -311,36 +298,44 @@ export default function DashboardPage() {
 
 				{/* Detailed Score Cards */}
 				{latestScore ? (
-					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-						<ScoreCard
-							title={t("dashboard.overallScore")}
-							score={latestScore.overallScore}
-							description={t("dashboard.overallScoreDesc")}
-						/>
-						<ScoreCard
-							title={t("reports.environmental")}
-							score={latestScore.environmentalScore}
-							description={t("dashboard.environmentalScoreDesc")}
-						/>
-						<ScoreCard
-							title={t("reports.social")}
-							score={latestScore.socialScore}
-							description={t("dashboard.socialScoreDesc")}
-						/>
-						<ScoreCard
-							title={t("reports.governance")}
-							score={latestScore.governanceScore}
-							description={t("dashboard.governanceScoreDesc")}
-						/>
+					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+							<div className="text-xs text-gray-600 mb-1">{t("dashboard.overallScore")}</div>
+							<div className="text-lg font-semibold text-gray-900">
+								{latestScore.overallScore.toFixed(1)}
+							</div>
+							<div className="text-xs text-gray-500 mt-0.5">{t("dashboard.overallScoreDesc")}</div>
+						</div>
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+							<div className="text-xs text-gray-600 mb-1">{t("reports.environmental")}</div>
+							<div className="text-lg font-semibold text-green-600">
+								{latestScore.environmentalScore.toFixed(1)}
+							</div>
+							<div className="text-xs text-gray-500 mt-0.5">{t("dashboard.environmentalScoreDesc")}</div>
+						</div>
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+							<div className="text-xs text-gray-600 mb-1">{t("reports.social")}</div>
+							<div className="text-lg font-semibold text-blue-600">
+								{latestScore.socialScore.toFixed(1)}
+							</div>
+							<div className="text-xs text-gray-500 mt-0.5">{t("dashboard.socialScoreDesc")}</div>
+						</div>
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+							<div className="text-xs text-gray-600 mb-1">{t("reports.governance")}</div>
+							<div className="text-lg font-semibold text-purple-600">
+								{latestScore.governanceScore.toFixed(1)}
+							</div>
+							<div className="text-xs text-gray-500 mt-0.5">{t("dashboard.governanceScoreDesc")}</div>
+						</div>
 					</div>
 				) : (
-					<div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 text-center">
 						<TrendingUp className="mx-auto text-gray-400 mb-4" size={48} />
-						<h3 className="text-xl font-semibold text-gray-900 mb-2">{t("dashboard.noEsgScoresYet")}</h3>
-						<p className="text-gray-600 mb-6">{t("dashboard.addMetricsToCalculate")}</p>
+						<h3 className="text-sm font-semibold text-gray-900 mb-2">{t("dashboard.noEsgScoresYet")}</h3>
+						<p className="text-xs text-gray-600 mb-4">{t("dashboard.addMetricsToCalculate")}</p>
 						<Link
 							href="/dashboard/environment"
-							className="inline-block px-6 py-3 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700"
+							className="inline-block px-3 py-1 bg-green-600 text-white rounded text-sm font-medium hover:bg-green-700 transition-colors"
 						>
 							{t("dashboard.addMetrics")}
 						</Link>
@@ -350,43 +345,43 @@ export default function DashboardPage() {
 				{/* Quick Stats Grid */}
 				{latestEnvMetric && (
 					<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-						<div className="bg-white rounded-lg border border-gray-200 p-2">
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
 							<div className="flex items-center justify-between mb-1">
 								<h4 className="text-xs font-medium text-gray-600">{t("dashboard.renewableEnergy")}</h4>
 								<Zap className="text-yellow-500" size={14} />
 							</div>
 							<div className="text-lg font-semibold text-gray-900">
-								{latestEnvMetric.renewableEnergyPercent.toFixed(1)}%
+								{(latestEnvMetric.renewableEnergyPercent || 0).toFixed(1)}%
 							</div>
 							<p className="text-xs text-gray-500 mt-0.5">{t("dashboard.ofTotalEnergy")}</p>
 						</div>
-						<div className="bg-white rounded-lg border border-gray-200 p-2">
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
 							<div className="flex items-center justify-between mb-1">
 								<h4 className="text-xs font-medium text-gray-600">{t("environment.carbonEmissions")}</h4>
 								<Wind className="text-red-500" size={14} />
 							</div>
 							<div className="text-lg font-semibold text-gray-900">
-								{latestEnvMetric.carbonEmissionsTons.toLocaleString()} {t("dashboard.tons")}
+								{(latestEnvMetric.carbonEmissionsTons || 0).toLocaleString()} {t("dashboard.tons")}
 							</div>
 							<p className="text-xs text-gray-500 mt-0.5">{t("dashboard.period")}: {latestEnvMetric.period}</p>
 						</div>
-						<div className="bg-white rounded-lg border border-gray-200 p-2">
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
 							<div className="flex items-center justify-between mb-1">
 								<h4 className="text-xs font-medium text-gray-600">{t("environment.waterUsage")}</h4>
 								<Droplets className="text-blue-500" size={14} />
 							</div>
 							<div className="text-lg font-semibold text-gray-900">
-								{latestEnvMetric.waterUsageKL.toLocaleString()} KL
+								{(latestEnvMetric.waterUsageKL || 0).toLocaleString()} KL
 							</div>
 							<p className="text-xs text-gray-500 mt-0.5">{t("dashboard.period")}: {latestEnvMetric.period}</p>
 						</div>
-						<div className="bg-white rounded-lg border border-gray-200 p-2">
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
 							<div className="flex items-center justify-between mb-1">
 								<h4 className="text-xs font-medium text-gray-600">{t("environment.wasteGenerated")}</h4>
 								<Activity className="text-orange-500" size={14} />
 							</div>
 							<div className="text-lg font-semibold text-gray-900">
-								{latestEnvMetric.wasteGeneratedKg.toLocaleString()} kg
+								{(latestEnvMetric.wasteGeneratedKg || 0).toLocaleString()} kg
 							</div>
 							<p className="text-xs text-gray-500 mt-0.5">{t("dashboard.period")}: {latestEnvMetric.period}</p>
 						</div>
@@ -394,7 +389,7 @@ export default function DashboardPage() {
 				)}
 
 				{/* Quick Actions */}
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+				<div className="grid grid-cols-1 md:grid-cols-3 gap-2">
 					<QuickActionCard
 						icon={Leaf}
 						title={t("dashboard.environmentalData")}
@@ -422,8 +417,8 @@ export default function DashboardPage() {
 	);
 }
 
-function QuickActionCard({ icon: Icon, title, description, href, color }: any) {
-	const colorClasses = {
+function QuickActionCard({ icon: Icon, title, description, href, color }: { icon: any; title: string; description: string; href: string; color: "green" | "blue" | "purple" }) {
+	const colorClasses: Record<"green" | "blue" | "purple", string> = {
 		green: "bg-green-50 text-green-600 hover:bg-green-100",
 		blue: "bg-blue-50 text-blue-600 hover:bg-blue-100",
 		purple: "bg-purple-50 text-purple-600 hover:bg-purple-100",
@@ -432,12 +427,12 @@ function QuickActionCard({ icon: Icon, title, description, href, color }: any) {
 	return (
 		<Link
 			href={href}
-			className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md transition-all group"
+			className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 hover:shadow-md transition-all group"
 		>
-			<div className={`inline-flex p-2 rounded-lg mb-3 ${colorClasses[color]}`}>
-				<Icon size={20} />
+			<div className={`inline-flex p-2 rounded-lg mb-2 ${colorClasses[color]}`}>
+				<Icon size={18} />
 			</div>
-			<h3 className="text-base font-semibold text-gray-900 mb-1.5 group-hover:text-green-600">
+			<h3 className="text-sm font-semibold text-gray-900 mb-1 group-hover:text-green-600">
 				{title}
 			</h3>
 			<p className="text-gray-600 text-xs">{description}</p>

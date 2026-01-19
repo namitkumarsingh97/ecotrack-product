@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { Search, Bell, Settings, LogOut, User, Building2, ChevronDown, CreditCard } from "lucide-react";
+import { Search, Bell, Settings, LogOut, User, Building2, ChevronDown, CreditCard, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { companyAPI } from "@/lib/api";
@@ -296,16 +296,40 @@ export default function AppBar({ user }: AppBarProps) {
 									</button>
 								)}
 								{user?.role === "ADMIN" && (
-									<button
-										onClick={() => {
-											setShowProfileMenu(false);
-											setShowPlanModal(true);
-										}}
-										className="w-full flex items-center gap-2 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
-									>
-										<CreditCard size={16} />
-										{t("navbar.switchPlan")}
-									</button>
+									<>
+										<button
+											onClick={() => {
+												setShowProfileMenu(false);
+												setShowPlanModal(true);
+											}}
+											className="w-full flex items-center gap-2 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+										>
+											<CreditCard size={16} />
+											{t("navbar.switchPlan")}
+										</button>
+										<div className="border-t border-gray-200 my-1"></div>
+										<Link
+											href="/dashboard/admin/clients"
+											target="_blank"
+											rel="noopener noreferrer"
+											onClick={() => setShowProfileMenu(false)}
+											className="w-full flex items-center gap-2 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+										>
+											<Building2 size={16} />
+											{t("admin.clientOnboarding")}
+										</Link>
+										<Link
+											href="/dashboard/admin/users"
+											target="_blank"
+											rel="noopener noreferrer"
+											onClick={() => setShowProfileMenu(false)}
+											className="w-full flex items-center gap-2 px-4 py-1.5 text-sm text-gray-700 hover:bg-gray-100"
+										>
+											<Users size={16} />
+											{t("admin.userManagement")}
+										</Link>
+										<div className="border-t border-gray-200 my-1"></div>
+									</>
 								)}
 								<Link
 									href="/dashboard/company"

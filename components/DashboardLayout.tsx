@@ -11,6 +11,11 @@ import {
 	FileText,
 	LogOut,
 	Menu,
+	BarChart3,
+	Database,
+	FolderOpen,
+	CheckCircle2,
+	Bell,
 } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -77,13 +82,12 @@ export default function DashboardLayout({
 		{ name: t("sidebar.social"), href: "/dashboard/social", icon: Users },
 		{ name: t("sidebar.governance"), href: "/dashboard/governance", icon: Shield },
 		{ name: t("sidebar.reports"), href: "/dashboard/reports", icon: FileText },
+		{ name: t("sidebar.esgScorecard"), href: "/dashboard/esg-scorecard", icon: BarChart3 },
+		{ name: t("sidebar.dataCollectionHub"), href: "/dashboard/data-collection", icon: Database },
+		{ name: t("sidebar.evidenceVault"), href: "/dashboard/evidence-vault", icon: FolderOpen },
+		{ name: t("sidebar.complianceCenter"), href: "/dashboard/compliance", icon: CheckCircle2 },
+		{ name: t("sidebar.alertsTasks"), href: "/dashboard/alerts-tasks", icon: Bell },
 	];
-
-	// Add admin navigation if user is admin
-	const adminNavigation = user?.role === "ADMIN" ? [
-		{ name: t("admin.clientOnboarding"), href: "/dashboard/admin/clients", icon: Building2 },
-		{ name: t("admin.userManagement"), href: "/dashboard/admin/users", icon: Users },
-	] : [];
 
 	return (
 		<div className="min-h-screen bg-gray-50 flex flex-col">
@@ -128,43 +132,6 @@ export default function DashboardLayout({
 								</Link>
 							);
 						})}
-						
-						{/* Admin Section Separator */}
-						{adminNavigation.length > 0 && (
-							<>
-								<div className={`my-4 border-t border-gray-200 ${!isHovered ? "opacity-0" : ""}`}></div>
-								<div className={`text-xs font-semibold text-gray-500 uppercase px-2.5 mb-2 ${!isHovered ? "opacity-0 h-0 overflow-hidden" : ""}`}>
-									{t("sidebar.admin")}
-								</div>
-								{adminNavigation.map((item) => {
-									const isActive = pathname === item.href;
-									const Icon = item.icon;
-
-									return (
-										<Link
-											key={item.name}
-											href={item.href}
-											className={`flex items-center gap-2.5 px-3 py-1.5 rounded transition-colors ${
-												isActive
-													? "bg-purple-50 text-purple-600 font-medium"
-													: "text-gray-700 hover:bg-gray-50"
-											} ${!isHovered ? "justify-center" : ""}`}
-										>
-											<Icon size={16} className="flex-shrink-0" />
-											<span
-												className={`text-xs whitespace-nowrap transition-all duration-300 ${
-													isHovered
-														? "opacity-100 w-auto"
-														: "opacity-0 w-0 overflow-hidden"
-												}`}
-											>
-												{item.name}
-											</span>
-										</Link>
-									);
-								})}
-							</>
-						)}
 					</nav>
 				</div>
 

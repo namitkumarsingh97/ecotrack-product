@@ -233,6 +233,44 @@ export default function EnvironmentPage() {
           </Link>
         </div>
 
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+            <div className="text-xs text-gray-600">Total Metrics</div>
+            <div className="text-lg font-semibold text-gray-900">
+              {metrics.length}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+            <div className="text-xs text-gray-600">Periods</div>
+            <div className="text-lg font-semibold text-green-600">
+              {periods.length}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+            <div className="text-xs text-gray-600">Avg Renewable Energy</div>
+            <div className="text-lg font-semibold text-blue-600">
+              {metrics.length > 0
+                ? (
+                    metrics.reduce(
+                      (sum, m) => sum + (m.renewableEnergyPercent || 0),
+                      0,
+                    ) / metrics.length
+                  ).toFixed(1)
+                : "0"}
+              %
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+            <div className="text-xs text-gray-600">Total Carbon (tons)</div>
+            <div className="text-lg font-semibold text-orange-600">
+              {metrics
+                .reduce((sum, m) => sum + (m.carbonEmissionsTons || 0), 0)
+                .toLocaleString()}
+            </div>
+          </div>
+        </div>
+
         {/* Period Chips - At Top */}
         {periods.length > 0 && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
@@ -320,44 +358,6 @@ export default function EnvironmentPage() {
             </div>
           )}
         </ETTable>
-
-        {/* Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-            <div className="text-xs text-gray-600">Total Metrics</div>
-            <div className="text-lg font-semibold text-gray-900">
-              {metrics.length}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-            <div className="text-xs text-gray-600">Periods</div>
-            <div className="text-lg font-semibold text-green-600">
-              {periods.length}
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-            <div className="text-xs text-gray-600">Avg Renewable Energy</div>
-            <div className="text-lg font-semibold text-blue-600">
-              {metrics.length > 0
-                ? (
-                    metrics.reduce(
-                      (sum, m) => sum + m.renewableEnergyPercent,
-                      0,
-                    ) / metrics.length
-                  ).toFixed(1)
-                : "0"}
-              %
-            </div>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-            <div className="text-xs text-gray-600">Total Carbon (tons)</div>
-            <div className="text-lg font-semibold text-orange-600">
-              {metrics
-                .reduce((sum, m) => sum + m.carbonEmissionsTons, 0)
-                .toLocaleString()}
-            </div>
-          </div>
-        </div>
       </div>
     </DashboardLayout>
   );

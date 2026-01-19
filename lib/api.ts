@@ -119,6 +119,8 @@ export const metricsAPI = {
 	deleteGovernance: (id: string) => api.delete(`/metrics/governance/${id}`),
 	// All
 	getByCompany: (companyId: string) => api.get(`/metrics/${companyId}`),
+	// Data Collection Hub
+	getCollectionHub: (companyId: string) => api.get(`/metrics/collection-hub/${companyId}`),
 };
 
 // ESG
@@ -126,6 +128,8 @@ export const esgAPI = {
 	calculate: (companyId: string, period: string) =>
 		api.post(`/esg/calculate/${companyId}`, { period }),
 	getScore: (companyId: string) => api.get(`/esg/score/${companyId}`),
+	getScorecard: (companyId: string, period?: string) =>
+		api.get(`/esg/scorecard/${companyId}`, { params: { period } }),
 	getReport: (companyId: string, format: string = "json", period?: string) => {
 		if (format === "pdf" || format === "excel") {
 			return api.get(`/esg/report/${companyId}`, {
