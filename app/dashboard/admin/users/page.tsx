@@ -19,7 +19,6 @@ import {
 	Filter,
 	Download,
 	Building2,
-	CreditCard,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -27,6 +26,8 @@ interface User {
 	id: string;
 	email: string;
 	name: string;
+	companyId?: string | null;
+	companyName?: string | null;
 	plan: "starter" | "pro" | "enterprise";
 	role: "USER" | "ADMIN" | "AUDITOR";
 	createdAt: string;
@@ -42,15 +43,11 @@ export default function AdminUsersPage() {
 	const [error, setError] = useState("");
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filterRole, setFilterRole] = useState<string>("all");
+	const [filterCompany, setFilterCompany] = useState<string>("all");
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [showEditModal, setShowEditModal] = useState(false);
 	const [selectedUser, setSelectedUser] = useState<User | null>(null);
 	const [actionLoading, setActionLoading] = useState<string | null>(null);
-	
-	// Test mode dropdowns (for admin to test different plans/companies)
-	const [testCompanyId, setTestCompanyId] = useState<string>("");
-	const [testPlan, setTestPlan] = useState<"starter" | "pro" | "enterprise">("starter");
-	const [currentUser, setCurrentUser] = useState<any>(null);
 
 	const [formData, setFormData] = useState({
 		email: "",
@@ -63,65 +60,16 @@ export default function AdminUsersPage() {
 	useEffect(() => {
 		loadUsers();
 		loadCompanies();
-		loadCurrentUser();
 	}, []);
 	
-	// Load companies for testing
+	// Load companies for filtering
 	const loadCompanies = async () => {
 		try {
 			const response = await companyAPI.getAll();
-			setCompanies(response.data.companies);
-			if (response.data.companies.length > 0) {
-				// Load test company from localStorage or use first company
-				const savedTestCompany = localStorage.getItem("admin_test_company");
-				if (savedTestCompany) {
-					setTestCompanyId(savedTestCompany);
-				} else {
-					setTestCompanyId(response.data.companies[0]._id);
-				}
-			}
+			setCompanies(response.data.companies || []);
 		} catch (error) {
 			console.error("Failed to load companies:", error);
 		}
-	};
-	
-	// Load current user for plan testing
-	const loadCurrentUser = async () => {
-		try {
-			const userData = localStorage.getItem("user");
-			if (userData) {
-				const user = JSON.parse(userData);
-				setCurrentUser(user);
-				// Load test plan from localStorage or use current plan
-				const savedTestPlan = localStorage.getItem("admin_test_plan") as "starter" | "pro" | "enterprise" | null;
-				if (savedTestPlan) {
-					setTestPlan(savedTestPlan);
-				} else {
-					setTestPlan(user.plan || "starter");
-				}
-			}
-		} catch (error) {
-			console.error("Failed to load current user:", error);
-		}
-	};
-	
-	// Handle test company change
-	const handleTestCompanyChange = (companyId: string) => {
-		setTestCompanyId(companyId);
-		localStorage.setItem("admin_test_company", companyId);
-		showToast.success("Test company changed. Refresh to see changes.");
-	};
-	
-	// Handle test plan change
-	const handleTestPlanChange = (plan: "starter" | "pro" | "enterprise") => {
-		setTestPlan(plan);
-		localStorage.setItem("admin_test_plan", plan);
-		// Clear feature cache to force refresh
-		if (typeof window !== "undefined") {
-			const { clearFeatureCache } = require("@/lib/features");
-			clearFeatureCache();
-		}
-		showToast.success(`Test plan changed to ${plan.toUpperCase()}. Refresh page to see module changes.`);
 	};
 
 	const loadUsers = async () => {
@@ -248,7 +196,11 @@ export default function AdminUsersPage() {
 			user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
 			user.email.toLowerCase().includes(searchTerm.toLowerCase());
 		const matchesRole = filterRole === "all" || user.role === filterRole;
-		return matchesSearch && matchesRole;
+		// Admins are system-level and don't have companies, so they show up in "All Companies" or "No Company" filters
+		const matchesCompany = filterCompany === "all" || 
+			(user.role === "ADMIN" && filterCompany === "none") ||
+			(user.role !== "ADMIN" && (user.companyId === filterCompany || (!user.companyId && filterCompany === "none")));
+		return matchesSearch && matchesRole && matchesCompany;
 	});
 
 	const getRoleBadgeColor = (role: string) => {
@@ -346,54 +298,6 @@ export default function AdminUsersPage() {
 					</div>
 				</div>
 
-				{/* Admin Test Mode Dropdowns */}
-				<div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-					<div className="flex items-center gap-2 mb-2">
-						<span className="text-xs font-semibold text-purple-900">Admin Test Mode:</span>
-						<span className="text-xs text-purple-700">Switch company/plan to test features</span>
-					</div>
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-						{/* Company Dropdown */}
-						<div>
-							<label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
-								<Building2 size={12} />
-								Test Company
-							</label>
-							<select
-								value={testCompanyId}
-								onChange={(e) => handleTestCompanyChange(e.target.value)}
-								className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-							>
-								<option value="">Select Company (for testing)</option>
-								{companies.map((company) => (
-									<option key={company._id} value={company._id}>
-										{company.name}
-									</option>
-								))}
-							</select>
-						</div>
-
-						{/* Plan Dropdown */}
-						<div>
-							<label className="block text-xs font-medium text-gray-700 mb-1 flex items-center gap-1">
-								<CreditCard size={12} />
-								Test Plan
-							</label>
-							<select
-								value={testPlan}
-								onChange={(e) => handleTestPlanChange(e.target.value as "starter" | "pro" | "enterprise")}
-								className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent bg-white"
-							>
-								<option value="starter">Starter</option>
-								<option value="pro">Pro</option>
-								<option value="enterprise">Enterprise</option>
-							</select>
-						</div>
-					</div>
-					<div className="mt-2 text-xs text-purple-600">
-						💡 Changes affect feature visibility. Refresh page to see module changes.
-					</div>
-				</div>
 
 				{error && (
 					<div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-xs">
@@ -427,6 +331,22 @@ export default function AdminUsersPage() {
 								<option value="AUDITOR">Auditor</option>
 							</select>
 						</div>
+						<div className="flex items-center gap-2">
+							<Building2 size={14} className="text-gray-400" />
+							<select
+								value={filterCompany}
+								onChange={(e) => setFilterCompany(e.target.value)}
+								className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+							>
+								<option value="all">All Companies</option>
+								<option value="none">No Company</option>
+								{companies.map((company) => (
+									<option key={company._id} value={company._id}>
+										{company.name}
+									</option>
+								))}
+							</select>
+						</div>
 					</div>
 				</div>
 
@@ -441,6 +361,9 @@ export default function AdminUsersPage() {
 								<tr>
 									<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 										User
+									</th>
+									<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+										Company
 									</th>
 									<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
 										Plan
@@ -459,7 +382,7 @@ export default function AdminUsersPage() {
 							<tbody className="bg-white divide-y divide-gray-200">
 								{filteredUsers.length === 0 ? (
 									<tr>
-										<td colSpan={5} className="px-2 py-8 text-center text-gray-500">
+										<td colSpan={6} className="px-2 py-8 text-center text-gray-500">
 											<Users size={36} className="mx-auto mb-3 text-gray-300" />
 											<p className="text-xs">No users found</p>
 										</td>
@@ -472,6 +395,18 @@ export default function AdminUsersPage() {
 													<div className="text-xs font-medium text-gray-900">{user.name}</div>
 													<div className="text-xs text-gray-500">{user.email}</div>
 												</div>
+											</td>
+											<td className="px-2 py-2 whitespace-nowrap">
+												{user.role === "ADMIN" ? (
+													<span className="text-xs text-purple-600 font-medium">System Admin</span>
+												) : user.companyName ? (
+													<div className="flex items-center gap-1">
+														<Building2 size={12} className="text-gray-400" />
+														<span className="text-xs text-gray-700">{user.companyName}</span>
+													</div>
+												) : (
+													<span className="text-xs text-gray-400 italic">No company</span>
+												)}
 											</td>
 											<td className="px-2 py-2 whitespace-nowrap">
 												<span

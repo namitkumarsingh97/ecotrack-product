@@ -5,6 +5,7 @@ import { plansAPI } from "@/lib/api";
 import { showToast } from "@/lib/toast";
 import { Check, X, Crown, Zap, Rocket, Info } from "lucide-react";
 import { FEATURE_WHY_IT_MATTERS, getUpgradeReason } from "@/lib/upgradeReasons";
+import { getPlanMessaging } from "@/lib/planMessaging";
 
 interface Plan {
 	_id?: string;
@@ -166,8 +167,18 @@ export default function PlanSelector({ currentPlan, onPlanChange, userRole }: Pl
 						</div>
 
 						{isCurrent && (
-							<div className="mb-4 px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold text-center">
-								Current Plan
+							<div className="mb-4 space-y-1">
+								<div className="px-3 py-1 bg-green-100 text-green-700 rounded text-xs font-semibold text-center">
+									Current Plan
+								</div>
+								{(() => {
+									const messaging = getPlanMessaging(plan.type);
+									return (
+										<p className="text-[10px] text-gray-600 italic text-center">
+											{messaging.readinessMessage}
+										</p>
+									);
+								})()}
 							</div>
 						)}
 

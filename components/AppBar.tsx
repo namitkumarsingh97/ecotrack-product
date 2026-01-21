@@ -11,6 +11,7 @@ import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useCompanyStore } from "@/stores";
 import { useTrialStatus } from "@/hooks/useTrialStatus";
+import { getPlanMessaging } from "@/lib/planMessaging";
 
 interface AppBarProps {
 	user?: any;
@@ -33,6 +34,7 @@ export default function AppBar({ user }: AppBarProps) {
 	// Use company store
 	const { companies, selectedCompany, setSelectedCompany, fetchCompanies } = useCompanyStore();
 	const trialStatus = useTrialStatus();
+	const planMessaging = selectedCompany?.plan ? getPlanMessaging(selectedCompany.plan as "starter" | "pro" | "enterprise") : null;
 
 	useEffect(() => {
 		// Update date/time every minute
@@ -349,19 +351,26 @@ export default function AppBar({ user }: AppBarProps) {
 								<div className="px-4 py-2 border-b border-gray-200 text-center">
 									<p className="text-sm font-semibold text-gray-900">{user?.name || "User"}</p>
 									<p className="text-xs text-gray-500">{user?.email || ""}</p>
-									<div className="flex items-center gap-1.5 mt-1">
-										<span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
-											{selectedCompany?.plan?.toUpperCase() || "STARTER"}
-										</span>
-										{trialStatus.isTrial && !trialStatus.isExpired && (
-											<span className="inline-block px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded">
-												{trialStatus.daysRemaining} days trial left
+									<div className="mt-1 space-y-1">
+										<div className="flex items-center gap-1.5">
+											<span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
+												{selectedCompany?.plan?.toUpperCase() || "STARTER"}
 											</span>
-										)}
-										{trialStatus.isTrial && trialStatus.isExpired && (
-											<span className="inline-block px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded">
-												Trial Expired
-											</span>
+											{trialStatus.isTrial && !trialStatus.isExpired && (
+												<span className="inline-block px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded">
+													{trialStatus.daysRemaining} days trial left
+												</span>
+											)}
+											{trialStatus.isTrial && trialStatus.isExpired && (
+												<span className="inline-block px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded">
+													Trial Expired
+												</span>
+											)}
+										</div>
+										{planMessaging && (
+											<p className="text-[10px] text-gray-600 italic">
+												{planMessaging.readinessMessage}
+											</p>
 										)}
 									</div>
 								</div>

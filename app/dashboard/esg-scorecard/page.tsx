@@ -7,6 +7,8 @@ import { showToast } from "@/lib/toast";
 import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw, CheckCircle2, XCircle, AlertTriangle, ArrowRight, Shield } from "lucide-react";
 import { useCompanyStore } from "@/stores";
 import { useTranslation } from "@/hooks/useTranslation";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
+import { getPlanMessaging } from "@/lib/planMessaging";
 import LineChart from "@/components/charts/LineChart";
 import DoughnutChart from "@/components/charts/DoughnutChart";
 import ETTabs, { Tab } from "@/components/ETTabs";
@@ -90,6 +92,8 @@ export default function ESGScorecardPage() {
 
 	// Use company store
 	const { selectedCompany, fetchCompanies } = useCompanyStore();
+	const { plan } = usePlanFeatures();
+	const planMessaging = getPlanMessaging(plan);
 
 	useEffect(() => {
 		fetchCompanies();
@@ -340,7 +344,7 @@ export default function ESGScorecardPage() {
 										</span>
 										<span className="text-sm text-gray-700">
 											{scorecard.overallRisk === 'Low' 
-												? 'Enterprise ready' 
+												? planMessaging.enterpriseReady
 												: scorecard.overallRisk === 'Medium' 
 												? 'Data gaps present' 
 												: 'Deal blocker'}

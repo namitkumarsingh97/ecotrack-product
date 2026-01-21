@@ -25,6 +25,7 @@ import Footer from "@/components/Footer";
 import TrialBanner from "@/components/TrialBanner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useUserStore, useCompanyStore } from "@/stores";
+import { getPlanMessaging } from "@/lib/planMessaging";
 
 export default function DashboardLayout({
 	children,
@@ -39,6 +40,7 @@ export default function DashboardLayout({
 	// Use stores
 	const { user, isAuthenticated, fetchUser, logout: storeLogout } = useUserStore();
 	const { selectedCompany, fetchCompanies } = useCompanyStore();
+	const planMessaging = selectedCompany?.plan ? getPlanMessaging(selectedCompany.plan as "starter" | "pro" | "enterprise") : null;
 
 	useEffect(() => {
 		const token = typeof window !== 'undefined' ? localStorage.getItem("token") : null;
@@ -147,9 +149,16 @@ export default function DashboardLayout({
 							<>
 								<p className="text-xs font-medium text-gray-900">{user.name}</p>
 								<p className="text-xs text-gray-500">{user.email}</p>
-								<span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
-									{selectedCompany?.plan?.toUpperCase() || "STARTER"}
-								</span>
+								<div className="mt-1 space-y-1">
+									<span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
+										{selectedCompany?.plan?.toUpperCase() || "STARTER"}
+									</span>
+									{planMessaging && (
+										<p className="text-[10px] text-gray-600 italic">
+											{planMessaging.readinessMessage}
+										</p>
+									)}
+								</div>
 							</>
 						)}
 					</div>

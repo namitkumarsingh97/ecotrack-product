@@ -5,6 +5,7 @@ import { usePlanFeatures } from "@/hooks/usePlanFeatures";
 import { Lock, Crown, TrendingUp, Shield, Zap } from "lucide-react";
 import Link from "next/link";
 import { getUpgradeReason, FEATURE_WHY_IT_MATTERS } from "@/lib/upgradeReasons";
+import { getPlanMessaging } from "@/lib/planMessaging";
 
 interface FeatureGateProps {
 	feature: keyof ReturnType<typeof usePlanFeatures>["features"];
@@ -15,6 +16,7 @@ interface FeatureGateProps {
 
 export default function FeatureGate({ feature, children, fallback, showUpgrade = true }: FeatureGateProps) {
 	const { hasFeature, plan } = usePlanFeatures();
+	const planMessaging = getPlanMessaging(plan);
 
 	if (hasFeature(feature)) {
 		return <>{children}</>;
@@ -92,6 +94,13 @@ export default function FeatureGate({ feature, children, fallback, showUpgrade =
 							<TrendingUp size={12} className="text-blue-600 mt-0.5 flex-shrink-0" />
 							<p className="text-[10px] text-gray-700 text-left leading-tight">{conciseValue}</p>
 						</div>
+					</div>
+
+					{/* Plan-aware messaging */}
+					<div className="mb-2 p-1.5 bg-gray-50 rounded border border-gray-200">
+						<p className="text-[10px] font-semibold text-gray-900 text-center">
+							{planMessaging.upgradePrompt}
+						</p>
 					</div>
 
 					{showUpgrade && (
