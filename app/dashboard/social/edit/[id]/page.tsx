@@ -64,6 +64,8 @@ export default function EditSocialPage() {
 	});
 	const [loading, setLoading] = useState(false);
 	const [metricLoading, setMetricLoading] = useState(true);
+	const [periods, setPeriods] = useState<string[]>([]);
+	const [loadingPeriods, setLoadingPeriods] = useState(false);
 
 	useEffect(() => {
 		fetchCompanies();
@@ -75,43 +77,97 @@ export default function EditSocialPage() {
 		}
 	}, [params.id]);
 
+	useEffect(() => {
+		const loadPeriods = async () => {
+			setLoadingPeriods(true);
+			try {
+				const response = await metricsAPI.getPeriods();
+				const loadedPeriods = response.data.periods || [];
+				
+				// If formData.period exists and is not in the list, add it
+				if (formData.period && !loadedPeriods.includes(formData.period)) {
+					loadedPeriods.push(formData.period);
+					loadedPeriods.sort().reverse(); // Sort descending
+				}
+				
+				setPeriods(loadedPeriods);
+			} catch (error: any) {
+				console.error('Failed to load periods:', error);
+				showToast.error("Failed to load periods");
+			} finally {
+				setLoadingPeriods(false);
+			}
+		};
+		loadPeriods();
+	}, [formData.period]);
+
 	const loadMetric = async (id: string) => {
 		try {
 			setMetricLoading(true);
 			const response = await metricsAPI.getSocialById(id);
 			const metric = response.data.metric;
 
+			if (!metric) {
+				showToast.error("Metric not found");
+				router.push("/dashboard/social");
+				return;
+			}
+
+			// Helper function to safely convert number to string
+			const numToString = (value: any): string => {
+				if (value === null || value === undefined) return "";
+				if (typeof value === "number") return value.toString();
+				return String(value);
+			};
+
+			// Helper function to safely convert ObjectId to string
+			const idToString = (value: any): string => {
+				if (!value) return "";
+				if (typeof value === "object" && value.toString) return value.toString();
+				return String(value);
+			};
+
+			const periodValue = metric.period || "";
+			
+			// Ensure the period from backend is in the periods list
+			if (periodValue && !periods.includes(periodValue)) {
+				setPeriods((prev) => {
+					const updated = [...prev, periodValue];
+					return updated.sort().reverse(); // Sort descending
+				});
+			}
+
 			setFormData({
-				period: metric.period || "",
-				companyId: metric.companyId || "",
+				period: periodValue,
+				companyId: idToString(metric.companyId),
 				// Tab 1
-				totalEmployeesPermanent: metric.totalEmployeesPermanent?.toString() || "",
-				totalEmployeesContractual: metric.totalEmployeesContractual?.toString() || "",
-				femalePercentWorkforce: metric.femalePercentWorkforce?.toString() || "",
-				womenInManagementPercent: metric.womenInManagementPercent?.toString() || "",
+				totalEmployeesPermanent: numToString(metric.totalEmployeesPermanent),
+				totalEmployeesContractual: numToString(metric.totalEmployeesContractual),
+				femalePercentWorkforce: numToString(metric.femalePercentWorkforce),
+				womenInManagementPercent: numToString(metric.womenInManagementPercent),
 				vulnerableGroupsRepresentation: metric.vulnerableGroupsRepresentation || "",
 				// Tab 2
-				accidentIncidents: metric.accidentIncidents?.toString() || "",
-				nearMissIncidents: metric.nearMissIncidents?.toString() || "",
-				totalTrainingHoursPerEmployee: metric.totalTrainingHoursPerEmployee?.toString() || "",
-				safetyDrillsConducted: metric.safetyDrillsConducted?.toString() || "",
+				accidentIncidents: numToString(metric.accidentIncidents),
+				nearMissIncidents: numToString(metric.nearMissIncidents),
+				totalTrainingHoursPerEmployee: numToString(metric.totalTrainingHoursPerEmployee),
+				safetyDrillsConducted: numToString(metric.safetyDrillsConducted),
 				healthSafetyPolicies: metric.healthSafetyPolicies || "",
 				awarenessSessions: metric.awarenessSessions || "",
 				// Tab 3
-				fairWagePolicyExists: metric.fairWagePolicyExists || false,
+				fairWagePolicyExists: Boolean(metric.fairWagePolicyExists),
 				fairWagePolicyDetails: metric.fairWagePolicyDetails || "",
-				medianRemuneration: metric.medianRemuneration?.toString() || "",
-				payRatio: metric.payRatio?.toString() || "",
+				medianRemuneration: numToString(metric.medianRemuneration),
+				payRatio: numToString(metric.payRatio),
 				grievanceRedressalMechanism: metric.grievanceRedressalMechanism || "",
 				// Tab 4
 				humanRightsTraining: metric.humanRightsTraining || "",
-				accessibilityMeasures: metric.accessibilityMeasures || false,
+				accessibilityMeasures: Boolean(metric.accessibilityMeasures),
 				accessibilityMeasuresDetails: metric.accessibilityMeasuresDetails || "",
-				antiHarassmentProcessExists: metric.antiHarassmentProcessExists || false,
+				antiHarassmentProcessExists: Boolean(metric.antiHarassmentProcessExists),
 				antiHarassmentProcessDetails: metric.antiHarassmentProcessDetails || "",
 				// Tab 5
-				csrSpend: metric.csrSpend?.toString() || "",
-				csrSpendPercent: metric.csrSpendPercent?.toString() || "",
+				csrSpend: numToString(metric.csrSpend),
+				csrSpendPercent: numToString(metric.csrSpendPercent),
 				csrActivities: metric.csrActivities || "",
 				communityEngagementPrograms: metric.communityEngagementPrograms || "",
 				impactAssessments: metric.impactAssessments || "",
@@ -121,11 +177,11 @@ export default function EditSocialPage() {
 				engagementType: metric.engagementType || "",
 				communicationOutcomes: metric.communicationOutcomes || "",
 				// Legacy
-				totalEmployees: metric.totalEmployees?.toString() || "",
-				femaleEmployees: metric.femaleEmployees?.toString() || "",
-				avgTrainingHours: metric.avgTrainingHours?.toString() || "",
-				workplaceIncidents: metric.workplaceIncidents?.toString() || "",
-				employeeTurnoverPercent: metric.employeeTurnoverPercent?.toString() || "",
+				totalEmployees: numToString(metric.totalEmployees),
+				femaleEmployees: numToString(metric.femaleEmployees),
+				avgTrainingHours: numToString(metric.avgTrainingHours),
+				workplaceIncidents: numToString(metric.workplaceIncidents),
+				employeeTurnoverPercent: numToString(metric.employeeTurnoverPercent),
 			});
 		} catch (error: any) {
 			showToast.error(error.response?.data?.error || "Failed to load metric");
@@ -213,8 +269,8 @@ export default function EditSocialPage() {
 	if (metricLoading) {
 		return (
 			<DashboardLayout>
-				<div className="text-center py-12">
-					<div className="text-xs text-gray-500">Loading...</div>
+				<div className="flex items-center justify-center h-64">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
 				</div>
 			</DashboardLayout>
 		);
@@ -236,7 +292,7 @@ export default function EditSocialPage() {
 
 	return (
 		<DashboardLayout>
-			<div className="max-w-6xl mx-auto">
+			<div className="px-4 md:px-6 lg:px-8">
 				<div className="mb-4">
 					<Link
 						href="/dashboard/social"
@@ -245,10 +301,45 @@ export default function EditSocialPage() {
 						<ArrowLeft size={14} />
 						{t("common.back")} {t("social.title")}
 					</Link>
-					<div className="flex items-center justify-between">
-						<div>
-							<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("social.editMetric")}</h1>
-							<p className="text-xs text-gray-600">{t("social.updateMetrics")}</p>
+					<div className="flex items-center justify-between mb-2">
+						<div className="flex items-center gap-4 flex-1">
+							<div>
+								<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("social.editMetric")}</h1>
+								<p className="text-xs text-gray-600">{t("social.updateMetrics")}</p>
+							</div>
+							{/* Period Selection */}
+							<div className="flex flex-col">
+								<label className="block text-xs font-medium text-gray-700 mb-1">
+									{t("dashboard.period")} *
+								</label>
+								<select
+									required
+									value={formData.period || ""}
+									onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+									disabled={loadingPeriods || metricLoading}
+									className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+								>
+									{loadingPeriods || metricLoading ? (
+										<option value="">{t("common.loading")}...</option>
+									) : periods.length > 0 ? (
+										<>
+											{!formData.period && <option value="">Select period</option>}
+											{periods.map((period) => (
+												<option key={period} value={period}>
+													{period}
+												</option>
+											))}
+											{formData.period && !periods.includes(formData.period) && (
+												<option value={formData.period}>{formData.period}</option>
+											)}
+										</>
+									) : formData.period ? (
+										<option value={formData.period}>{formData.period}</option>
+									) : (
+										<option value="">No periods available</option>
+									)}
+								</select>
+							</div>
 						</div>
 						<div className="flex gap-2">
 							<Link
@@ -277,23 +368,6 @@ export default function EditSocialPage() {
 
 				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
 					<form onSubmit={handleSubmit} className="space-y-4">
-						{/* Period Selection */}
-						<div className="pb-4 border-b border-gray-200">
-							<div>
-								<label className="block text-xs font-medium text-gray-700 mb-1">
-									{t("dashboard.period")} *
-								</label>
-								<input
-									type="text"
-									required
-									value={formData.period}
-									onChange={(e) => setFormData({ ...formData, period: e.target.value })}
-									className="w-full md:w-auto px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="2026-Q1"
-								/>
-								<p className="text-xs text-gray-500 mt-0.5">{t("social.periodFormat") || "Format: YYYY-QN (e.g., 2026-Q1)"}</p>
-							</div>
-						</div>
 
 						{/* Tab Form Component */}
 						<SocialFormTabs
