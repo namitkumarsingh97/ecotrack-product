@@ -25,6 +25,8 @@ import Link from "next/link";
 import { format } from "date-fns";
 import { useCompanyStore, useMetricsStore, useESGStore } from "@/stores";
 import { useTranslation } from "@/hooks/useTranslation";
+import { usePlanFeatures } from "@/hooks/usePlanFeatures";
+import FeatureGate from "@/components/FeatureGate";
 
 export default function DashboardPage() {
 	const [selectedPeriod, setSelectedPeriod] = useState<string>("all");
@@ -243,26 +245,28 @@ export default function DashboardPage() {
 						</div>
 
 						{/* ESG Score Trend - Line Chart */}
-						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-							<h3 className="text-xs font-semibold text-gray-900 mb-2">{t("dashboard.esgScoreTrend")}</h3>
-							{scoreTrendData.length > 0 ? (
-								<LineChart
-									data={scoreTrendData}
-									xKey="period"
-									lineKeys={[
-										{ key: "Overall", name: t("reports.overall"), color: "#10b981" },
-										{ key: "Environmental", name: t("reports.environmental"), color: "#10b981" },
-										{ key: "Social", name: t("reports.social"), color: "#3b82f6" },
-										{ key: "Governance", name: t("reports.governance"), color: "#8b5cf6" },
-									]}
-									height={200}
-								/>
-							) : (
-								<div className="flex items-center justify-center h-[200px] text-xs text-gray-500">
-									{t("dashboard.noTrendData")}
-								</div>
-							)}
-						</div>
+						<FeatureGate feature="multiYearTrendAnalysis">
+							<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2 h-full">
+								<h3 className="text-xs font-semibold text-gray-900 mb-2">{t("dashboard.esgScoreTrend")}</h3>
+								{scoreTrendData.length > 0 ? (
+									<LineChart
+										data={scoreTrendData}
+										xKey="period"
+										lineKeys={[
+											{ key: "Overall", name: t("reports.overall"), color: "#10b981" },
+											{ key: "Environmental", name: t("reports.environmental"), color: "#10b981" },
+											{ key: "Social", name: t("reports.social"), color: "#3b82f6" },
+											{ key: "Governance", name: t("reports.governance"), color: "#8b5cf6" },
+										]}
+										height={200}
+									/>
+								) : (
+									<div className="flex items-center justify-center h-[200px] text-xs text-gray-500">
+										{t("dashboard.noTrendData")}
+									</div>
+								)}
+							</div>
+						</FeatureGate>
 					</div>
 				)}
 
@@ -278,21 +282,23 @@ export default function DashboardPage() {
 						</div>
 
 						{/* Environmental Trend - Bar Chart */}
-						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-							<h3 className="text-xs font-semibold text-gray-900 mb-2">{t("dashboard.carbonEmissionsTrend")}</h3>
-							{envTrendData.length > 0 ? (
-								<BarChart
-									data={envTrendData}
-									xKey="period"
-									barKeys={[{ key: "Carbon (tons)", name: t("dashboard.carbonEmissionsTons"), color: "#ef4444" }]}
-									height={200}
-								/>
-							) : (
-								<div className="flex items-center justify-center h-[200px] text-xs text-gray-500">
-									{t("dashboard.noTrendData")}
-								</div>
-							)}
-						</div>
+						<FeatureGate feature="advancedAnalytics">
+							<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2 h-full">
+								<h3 className="text-xs font-semibold text-gray-900 mb-2">{t("dashboard.carbonEmissionsTrend")}</h3>
+								{envTrendData.length > 0 ? (
+									<BarChart
+										data={envTrendData}
+										xKey="period"
+										barKeys={[{ key: "Carbon (tons)", name: t("dashboard.carbonEmissionsTons"), color: "#ef4444" }]}
+										height={200}
+									/>
+								) : (
+									<div className="flex items-center justify-center h-[200px] text-xs text-gray-500">
+										{t("dashboard.noTrendData")}
+									</div>
+								)}
+							</div>
+						</FeatureGate>
 					</div>
 				)}
 

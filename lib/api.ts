@@ -163,6 +163,13 @@ export const tasksAPI = {
 	delete: (id: string) => api.delete(`/tasks/${id}`),
 };
 
+// Plans
+export const plansAPI = {
+	getAll: () => api.get("/plans"),
+	getCurrent: () => api.get("/plans/current"),
+	updatePlan: (plan: "starter" | "pro" | "enterprise") => api.put("/plans/update", { plan }),
+};
+
 // ESG
 export const esgAPI = {
 	calculate: (companyId: string, period: string) =>

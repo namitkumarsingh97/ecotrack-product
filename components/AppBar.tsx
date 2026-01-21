@@ -99,21 +99,27 @@ export default function AppBar({ user }: AppBarProps) {
 	const handlePlanChange = async () => {
 		if (!user || user.role !== "ADMIN") return;
 		
-		// Store test plan in localStorage for admin testing
-		localStorage.setItem("admin_test_plan", selectedPlan);
-		
-		// Update user plan temporarily
-		const updatedUser = { ...user, plan: selectedPlan };
-		localStorage.setItem("user", JSON.stringify(updatedUser));
-		
-		// Clear feature cache
-		if (typeof window !== "undefined") {
-			const { clearFeatureCache } = await import("@/lib/features");
-			clearFeatureCache();
+		try {
+			const { plansAPI } = await import("@/lib/api");
+			await plansAPI.updatePlan(selectedPlan);
+			
+			// Update user plan
+			const updatedUser = { ...user, plan: selectedPlan };
+			localStorage.setItem("user", JSON.stringify(updatedUser));
+			
+			// Clear feature cache
+			if (typeof window !== "undefined") {
+				const { clearFeatureCache } = await import("@/lib/features");
+				clearFeatureCache();
+			}
+			
+			showToast.success(`Plan changed to ${selectedPlan.toUpperCase()}`);
+			setShowPlanModal(false);
+			// Reload to reflect changes
+			window.location.reload();
+		} catch (error: any) {
+			showToast.error(error.response?.data?.error || "Failed to update plan");
 		}
-		
-		showToast.success(`Plan changed to ${selectedPlan.toUpperCase()}. Refresh to see changes.`);
-		setShowPlanModal(false);
 	};
 
 	const getUserInitials = () => {
@@ -223,31 +229,88 @@ export default function AppBar({ user }: AppBarProps) {
 							</button>
 							
 							{showPlanModal && (
-								<div className="absolute right-0 mt-2 w-48 bg-white rounded-lg border border-gray-200 shadow-lg z-50 p-2">
-									<div className="text-xs font-semibold text-gray-700 mb-2 px-2">{t("navbar.switchPlan")} ({t("navbar.testMode")})</div>
-									<select
-										value={selectedPlan}
-										onChange={(e) => setSelectedPlan(e.target.value as "starter" | "pro" | "enterprise")}
-										className="w-full px-2 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent mb-2"
-									>
-										<option value="starter">Starter</option>
-										<option value="pro">Pro</option>
-										<option value="enterprise">Enterprise</option>
-									</select>
-									<div className="flex gap-2">
+								<div className="absolute right-0 mt-2 w-64 bg-white rounded-lg border border-gray-200 shadow-xl z-50 p-3">
+									<div className="text-xs font-semibold text-gray-900 mb-3 px-2">Select Plan</div>
+									<div className="space-y-2">
 										<button
-											onClick={handlePlanChange}
-											className="flex-1 px-3 py-1.5 bg-purple-600 text-white rounded-lg text-xs font-medium hover:bg-purple-700"
+											onClick={() => {
+												setSelectedPlan("starter");
+												handlePlanChange();
+											}}
+											className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all ${
+												selectedPlan === "starter" || user?.plan === "starter"
+													? "border-green-600 bg-green-50"
+													: "border-gray-200 hover:border-gray-300"
+											}`}
 										>
-											{t("common.submit")}
+											<div className="flex items-center justify-between">
+												<div>
+													<div className="text-xs font-semibold text-gray-900">Starter</div>
+													<div className="text-xs text-gray-600">₹1,999/month</div>
+												</div>
+												{(selectedPlan === "starter" || user?.plan === "starter") && (
+													<div className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center">
+														<div className="w-2 h-2 bg-white rounded-full"></div>
+													</div>
+												)}
+											</div>
 										</button>
 										<button
-											onClick={() => setShowPlanModal(false)}
-											className="px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded-lg"
+											onClick={() => {
+												setSelectedPlan("pro");
+												handlePlanChange();
+											}}
+											className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all ${
+												selectedPlan === "pro" || user?.plan === "pro"
+													? "border-yellow-600 bg-yellow-50"
+													: "border-gray-200 hover:border-gray-300"
+											}`}
 										>
-											{t("common.cancel")}
+											<div className="flex items-center justify-between">
+												<div>
+													<div className="flex items-center gap-1">
+														<div className="text-xs font-semibold text-gray-900">Pro</div>
+														<span className="text-xs bg-yellow-500 text-white px-1 rounded">Popular</span>
+													</div>
+													<div className="text-xs text-gray-600">₹4,999/month</div>
+												</div>
+												{(selectedPlan === "pro" || user?.plan === "pro") && (
+													<div className="w-4 h-4 bg-yellow-600 rounded-full flex items-center justify-center">
+														<div className="w-2 h-2 bg-white rounded-full"></div>
+													</div>
+												)}
+											</div>
+										</button>
+										<button
+											onClick={() => {
+												setSelectedPlan("enterprise");
+												handlePlanChange();
+											}}
+											className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all ${
+												selectedPlan === "enterprise" || user?.plan === "enterprise"
+													? "border-purple-600 bg-purple-50"
+													: "border-gray-200 hover:border-gray-300"
+											}`}
+										>
+											<div className="flex items-center justify-between">
+												<div>
+													<div className="text-xs font-semibold text-gray-900">Enterprise</div>
+													<div className="text-xs text-gray-600">Custom pricing</div>
+												</div>
+												{(selectedPlan === "enterprise" || user?.plan === "enterprise") && (
+													<div className="w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center">
+														<div className="w-2 h-2 bg-white rounded-full"></div>
+													</div>
+												)}
+											</div>
 										</button>
 									</div>
+									<button
+										onClick={() => setShowPlanModal(false)}
+										className="w-full mt-3 px-3 py-1.5 text-xs text-gray-700 hover:bg-gray-100 rounded-lg"
+									>
+										Close
+									</button>
 								</div>
 							)}
 						</div>
