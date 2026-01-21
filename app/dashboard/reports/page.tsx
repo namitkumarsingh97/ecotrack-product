@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { esgAPI } from "@/lib/api";
+import { esgAPI, metricsAPI } from "@/lib/api";
 import { showToast } from "@/lib/toast";
 import { FileText, Download, Calendar, Plus } from "lucide-react";
 import Link from "next/link";
@@ -16,6 +16,8 @@ export default function ReportsPage() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filterPeriod, setFilterPeriod] = useState("all");
 	const [loading, setLoading] = useState<string | null>(null);
+	const [periods, setPeriods] = useState<string[]>([]);
+	const [loadingPeriods, setLoadingPeriods] = useState(false);
 
 	// Use stores
 	const { companies, selectedCompany, fetchCompanies } = useCompanyStore();
@@ -47,6 +49,44 @@ export default function ReportsPage() {
 			fetchScores(selectedCompanyId);
 		}
 	}, [selectedCompanyId, fetchScores]);
+
+	useEffect(() => {
+		// Load periods from backend
+		const loadPeriods = async () => {
+			setLoadingPeriods(true);
+			try {
+				const response = await metricsAPI.getPeriods();
+				const backendPeriods = response.data.periods || [];
+				
+				// Get unique periods from actual scores
+				const scorePeriods = Array.from(new Set(esgScores.map((s) => s.period)));
+				
+				// Combine and deduplicate, prioritizing backend periods order
+				const allPeriods = [...backendPeriods];
+				scorePeriods.forEach((period) => {
+					if (!allPeriods.includes(period)) {
+						allPeriods.push(period);
+					}
+				});
+				
+				// Sort descending (newest first)
+				allPeriods.sort().reverse();
+				
+				setPeriods(allPeriods);
+			} catch (error: any) {
+				console.error('Failed to load periods:', error);
+				// Fallback to periods from scores if backend fails
+				const scorePeriods = Array.from(new Set(esgScores.map((s) => s.period)))
+					.sort()
+					.reverse();
+				setPeriods(scorePeriods);
+			} finally {
+				setLoadingPeriods(false);
+			}
+		};
+		
+		loadPeriods();
+	}, [esgScores]);
 
 	const handleDownloadPDF = async (period: string) => {
 		if (!selectedCompanyId) {
@@ -112,8 +152,8 @@ export default function ReportsPage() {
 		}
 	};
 
-	// Get unique periods for chips
-	const periods = Array.from(new Set(esgScores.map((s) => s.period)))
+	// Get unique periods from scores (for display purposes)
+	const scorePeriods = Array.from(new Set(esgScores.map((s) => s.period)))
 		.sort()
 		.reverse();
 
@@ -242,7 +282,7 @@ export default function ReportsPage() {
 					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
 						<div className="text-xs text-gray-600">Periods</div>
 						<div className="text-lg font-semibold text-green-600">
-							{periods.length}
+							{scorePeriods.length}
 						</div>
 					</div>
 					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
@@ -259,41 +299,37 @@ export default function ReportsPage() {
 					</div>
 				</div>
 
-				{/* Period Chips - At Top */}
-				{periods.length > 0 && (
-					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-						<div className="flex items-center gap-2 flex-wrap">
-							<button
-								onClick={() => setFilterPeriod("all")}
-								className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-									filterPeriod === "all"
-										? "bg-green-600 text-white"
-										: "bg-gray-200 text-gray-700 hover:bg-gray-300"
-								}`}
-							>
-								{t("dashboard.allPeriods")}
-							</button>
-							{periods.slice(0, 3).map((period) => (
-								<button
-									key={period}
-									onClick={() => setFilterPeriod(period)}
-									className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-										filterPeriod === period
-											? "bg-green-600 text-white"
-											: "bg-gray-200 text-gray-700 hover:bg-gray-300"
-									}`}
-								>
-									{period}
-								</button>
-							))}
-							{periods.length > 3 && (
-								<span className="text-xs text-gray-500 px-2">
-									+{periods.length - 3} more
-								</span>
+				{/* Period Filter Dropdown */}
+				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+					<div className="flex items-center gap-3">
+						<label className="text-xs font-medium text-gray-700 whitespace-nowrap">
+							{t("dashboard.period")}:
+						</label>
+						<select
+							value={filterPeriod}
+							onChange={(e) => setFilterPeriod(e.target.value)}
+							disabled={loadingPeriods}
+							className="flex-1 max-w-xs px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+						>
+							<option value="all">{t("dashboard.allPeriods")}</option>
+							{loadingPeriods ? (
+								<option value="" disabled>{t("common.loading")}...</option>
+							) : periods.length > 0 ? (
+								periods.map((period) => (
+									<option key={period} value={period}>
+										{period}
+									</option>
+								))
+							) : (
+								scorePeriods.map((period) => (
+									<option key={period} value={period}>
+										{period}
+									</option>
+								))
 							)}
-						</div>
+						</select>
 					</div>
-				)}
+				</div>
 
 				{/* Reports Table */}
 				{esgScores.length === 0 ? (

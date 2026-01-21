@@ -401,7 +401,7 @@ export default function DataCollectionHubPage() {
 					columns={tableColumns}
 					rows={tableRows}
 					loading={loading}
-					title={t("dataCollection.collectionStatus")}
+					title={`${t("dataCollection.collectionStatus")} (${filteredStatus.length})`}
 					showSearch={false}
 					showDownloadBtn={true}
 					showRefreshBtn={true}
