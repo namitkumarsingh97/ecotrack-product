@@ -439,9 +439,33 @@
     "reports": "Reports",
     "esgScorecard": "ESG Scorecard",
     "dataCollectionHub": "Data Collection Hub",
-    "evidenceVault": "Evidence Vault",
+    "evidenceVault": {
+      "title": "Evidence Vault",
+      "subtitle": "Document management for ESG compliance",
+      "noCompanySelected": "No company selected",
+      "selectCompanyFromNav": "Please select a company from the top navigation",
+      "totalDocuments": "Total Documents Uploaded",
+      "linkedDocuments": "Documents Linked to ESG",
+      "pendingEvidence": "Pending Evidence",
+      "expiringSoon": "Expiring Soon"
+    },
     "complianceCenter": "Compliance Center",
-    "alertsTasks": "Alerts & Tasks",
+    "compliance": {
+      "title": "Compliance Center",
+      "subtitle": "BRSR Readiness Assessment",
+      "noCompanySelected": "No company selected",
+      "selectCompanyFromNav": "Please select a company from the top navigation",
+      "noData": "No compliance data available",
+      "addMetrics": "Add metrics to calculate compliance readiness"
+    },
+    "alertsTasks": {
+      "title": "Alerts & Tasks",
+      "subtitle": "Action dashboard for ESG improvements",
+      "noCompanySelected": "No company selected",
+      "selectCompanyFromNav": "Please select a company from the top navigation",
+      "noTasks": "No tasks available",
+      "tasksWillAppear": "Tasks will appear here based on your ESG data"
+    },
     "admin": "Admin"
   }
 }

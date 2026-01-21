@@ -125,6 +125,44 @@ export const metricsAPI = {
 	getPeriods: () => api.get(`/metrics/periods`),
 };
 
+// Evidence
+export const evidenceAPI = {
+	getDashboard: (companyId: string) => api.get(`/evidence/dashboard/${companyId}`),
+	getAll: (companyId: string, params?: { esgArea?: string; status?: string }) => {
+		const queryParams = new URLSearchParams();
+		if (params?.esgArea) queryParams.append('esgArea', params.esgArea);
+		if (params?.status) queryParams.append('status', params.status);
+		return api.get(`/evidence/${companyId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+	},
+	upload: (companyId: string, formData: FormData) => api.post(`/evidence/upload/${companyId}`, formData, {
+		headers: { 'Content-Type': 'multipart/form-data' }
+	}),
+	link: (id: string, linkedTo: string) => api.put(`/evidence/link/${id}`, { linkedTo }),
+	delete: (id: string) => api.delete(`/evidence/${id}`),
+};
+
+// Compliance
+export const complianceAPI = {
+	getDashboard: (companyId: string, period?: string) => 
+		api.get(`/compliance/dashboard/${companyId}`, { params: { period } }),
+};
+
+// Tasks
+export const tasksAPI = {
+	getDashboard: (companyId: string, period?: string) => 
+		api.get(`/tasks/dashboard/${companyId}`, { params: { period } }),
+	getAll: (companyId: string, params?: { esgArea?: string; priority?: string; status?: string }) => {
+		const queryParams = new URLSearchParams();
+		if (params?.esgArea) queryParams.append('esgArea', params.esgArea);
+		if (params?.priority) queryParams.append('priority', params.priority);
+		if (params?.status) queryParams.append('status', params.status);
+		return api.get(`/tasks/${companyId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
+	},
+	updateStatus: (id: string, status: string) => api.put(`/tasks/${id}/status`, { status }),
+	create: (companyId: string, data: any) => api.post(`/tasks/${companyId}`, data),
+	delete: (id: string) => api.delete(`/tasks/${id}`),
+};
+
 // ESG
 export const esgAPI = {
 	calculate: (companyId: string, period: string) =>
