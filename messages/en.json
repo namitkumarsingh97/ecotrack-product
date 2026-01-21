@@ -28,7 +28,8 @@
     "settings": "Settings",
     "profile": "Profile",
     "company": "Company",
-    "dashboard": "Dashboard"
+    "dashboard": "Dashboard",
+    "left": "left"
   },
   "auth": {
     "loginTitle": "Welcome Back",
@@ -302,6 +303,20 @@
     "regularUsers": "Regular Users",
     "auditors": "Auditors",
     "plan": "Plan",
+    "trial": {
+      "title": "Free Trial",
+      "daysRemaining": "{days} days remaining",
+      "trialActive": "Trial Active",
+      "trialExpired": "Trial Expired",
+      "startTrial": "Start 14-Day Free Trial",
+      "convertToPaid": "Convert to Paid",
+      "trialEnded": "Your trial has ended. Upgrade to continue using Pro features.",
+      "starterNoTrial": "No trial - low price point",
+      "proTrial": "14-day free trial",
+      "enterpriseDemo": "Demo only - contact sales",
+      "trialEligible": "Eligible for 14-day free trial",
+      "upgradeToContinue": "Upgrade to continue"
+    },
     "role": "Role",
     "createdAt": "Created",
     "created": "Created",

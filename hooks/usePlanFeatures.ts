@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useCompanyStore } from "@/stores";
+import { useTrialStatus } from "./useTrialStatus";
 
 export interface PlanFeatures {
 	// Dashboard & Tracking
@@ -128,19 +129,37 @@ const PLAN_FEATURES: Record<"starter" | "pro" | "enterprise", PlanFeatures> = {
 
 export const usePlanFeatures = () => {
 	const { selectedCompany } = useCompanyStore();
+	const trialStatus = useTrialStatus();
 	
 	// Plan is now company-specific, not user-specific
 	const plan = (selectedCompany?.plan || "starter") as "starter" | "pro" | "enterprise";
 	const features = useMemo(() => PLAN_FEATURES[plan], [plan]);
 	
+	// If on trial and trial expired, downgrade to Starter features
+	const effectivePlan = useMemo(() => {
+		if (trialStatus.isTrial && trialStatus.isExpired && plan === "pro") {
+			return "starter" as const;
+		}
+		return plan;
+	}, [plan, trialStatus.isTrial, trialStatus.isExpired]);
+	
+	const effectiveFeatures = useMemo(() => PLAN_FEATURES[effectivePlan], [effectivePlan]);
+	
 	const hasFeature = (feature: keyof PlanFeatures): boolean => {
+		// If trial expired, only Starter features available
+		if (trialStatus.isTrial && trialStatus.isExpired && plan === "pro") {
+			return effectiveFeatures[feature] === true || (typeof effectiveFeatures[feature] === "number" && effectiveFeatures[feature] > 0);
+		}
 		return features[feature] === true || (typeof features[feature] === "number" && features[feature] > 0);
 	};
 	
 	return {
 		plan,
-		features,
+		effectivePlan,
+		features: effectiveFeatures,
 		hasFeature,
+		isTrial: trialStatus.isTrial,
+		trialExpired: trialStatus.isExpired,
 	};
 };
 

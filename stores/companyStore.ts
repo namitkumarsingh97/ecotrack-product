@@ -17,6 +17,11 @@ interface Company {
 	location: string;
 	reportingYear: number;
 	plan?: 'starter' | 'pro' | 'enterprise'; // Subscription plan for this company (client)
+	subscriptionStatus?: 'trial' | 'active' | 'expired' | 'cancelled';
+	isTrial?: boolean;
+	trialStartDate?: string;
+	trialEndDate?: string;
+	subscriptionStartDate?: string;
 	customFeatures?: string[];
 	featureOverrides?: Record<string, boolean>;
 	createdAt?: string;

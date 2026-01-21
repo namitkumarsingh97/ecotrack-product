@@ -149,11 +149,18 @@ export default function PlanSelector({ currentPlan, onPlanChange, userRole }: Pl
 								<div>
 									<div className="text-2xl font-bold text-gray-900">Custom</div>
 									<div className="text-sm text-gray-600">Contact Sales</div>
+									<div className="text-xs text-gray-500 mt-1">Demo only - no self-serve trial</div>
 								</div>
 							) : (
 								<div>
 									<span className="text-2xl font-bold text-gray-900">₹{plan.price.toLocaleString()}</span>
 									<span className="text-sm text-gray-600">/month</span>
+									{plan.type === "starter" && (
+										<div className="text-xs text-gray-500 mt-1">No trial - low price</div>
+									)}
+									{plan.type === "pro" && (
+										<div className="text-xs text-yellow-600 font-semibold mt-1">14-day free trial</div>
+									)}
 								</div>
 							)}
 						</div>

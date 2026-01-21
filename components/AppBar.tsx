@@ -10,6 +10,7 @@ import { showToast } from "@/lib/toast";
 import LanguageSwitcher from "@/components/LanguageSwitcher";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useCompanyStore } from "@/stores";
+import { useTrialStatus } from "@/hooks/useTrialStatus";
 
 interface AppBarProps {
 	user?: any;
@@ -31,6 +32,7 @@ export default function AppBar({ user }: AppBarProps) {
 	
 	// Use company store
 	const { companies, selectedCompany, setSelectedCompany, fetchCompanies } = useCompanyStore();
+	const trialStatus = useTrialStatus();
 
 	useEffect(() => {
 		// Update date/time every minute
@@ -225,7 +227,14 @@ export default function AppBar({ user }: AppBarProps) {
 								className="flex items-center gap-1.5 px-3 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
 							>
 								<CreditCard size={14} />
-								<span className="font-medium text-gray-700">{selectedCompany?.plan?.toUpperCase() || "STARTER"}</span>
+								<div className="flex items-center gap-1.5">
+									<span className="font-medium text-gray-700">{selectedCompany?.plan?.toUpperCase() || "STARTER"}</span>
+									{trialStatus.isTrial && !trialStatus.isExpired && (
+										<span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-semibold rounded">
+											{trialStatus.daysRemaining}D TRIAL
+										</span>
+									)}
+								</div>
 								<ChevronDown size={12} />
 							</button>
 							
@@ -340,9 +349,21 @@ export default function AppBar({ user }: AppBarProps) {
 								<div className="px-4 py-2 border-b border-gray-200 text-center">
 									<p className="text-sm font-semibold text-gray-900">{user?.name || "User"}</p>
 									<p className="text-xs text-gray-500">{user?.email || ""}</p>
-									<span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
-										{selectedCompany?.plan?.toUpperCase() || "STARTER"}
-									</span>
+									<div className="flex items-center gap-1.5 mt-1">
+										<span className="inline-block px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
+											{selectedCompany?.plan?.toUpperCase() || "STARTER"}
+										</span>
+										{trialStatus.isTrial && !trialStatus.isExpired && (
+											<span className="inline-block px-2 py-0.5 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded">
+												{trialStatus.daysRemaining} days trial left
+											</span>
+										)}
+										{trialStatus.isTrial && trialStatus.isExpired && (
+											<span className="inline-block px-2 py-0.5 bg-red-100 text-red-700 text-xs font-semibold rounded">
+												Trial Expired
+											</span>
+										)}
+									</div>
 								</div>
 								{companies.length > 1 && (
 									<button

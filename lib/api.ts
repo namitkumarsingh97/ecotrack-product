@@ -171,6 +171,14 @@ export const plansAPI = {
 		api.put("/plans/update", { plan, companyId }),
 };
 
+// Trials
+export const trialsAPI = {
+	getStatus: (companyId: string) => api.get(`/trials/status/${companyId}`),
+	start: (companyId: string) => api.post(`/trials/start/${companyId}`),
+	convert: (companyId: string) => api.post(`/trials/convert/${companyId}`),
+	getEligibility: () => api.get("/trials/eligibility"),
+};
+
 // ESG
 export const esgAPI = {
 	calculate: (companyId: string, period: string) =>

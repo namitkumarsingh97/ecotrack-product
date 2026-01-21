@@ -22,6 +22,7 @@ import { useEffect, useState } from "react";
 import { useInactivity } from "@/hooks/useInactivity";
 import AppBar from "@/components/AppBar";
 import Footer from "@/components/Footer";
+import TrialBanner from "@/components/TrialBanner";
 import { useTranslation } from "@/hooks/useTranslation";
 import { useUserStore, useCompanyStore } from "@/stores";
 
@@ -175,6 +176,7 @@ export default function DashboardLayout({
 						isHovered ? "ml-52" : "ml-10"
 					}`}
 				>
+					<TrialBanner />
 					{children}
 				</main>
 			</div>
