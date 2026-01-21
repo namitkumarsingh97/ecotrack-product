@@ -31,6 +31,8 @@ export default function SocialPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPeriod, setFilterPeriod] = useState("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [periods, setPeriods] = useState<string[]>([]);
+  const [loadingPeriods, setLoadingPeriods] = useState(false);
 
   // Use stores
   const { companies, selectedCompany, fetchCompanies } = useCompanyStore();
@@ -38,6 +40,8 @@ export default function SocialPage() {
     social: socialMetricsMap,
     fetchSocial,
     deleteSocial,
+    clearCompanyCache,
+    setSocial,
     isLoading: metricsLoading,
   } = useMetricsStore();
 
@@ -66,6 +70,44 @@ export default function SocialPage() {
     }
   }, [selectedCompanyId, fetchSocial]);
 
+  useEffect(() => {
+    // Load periods from backend
+    const loadPeriods = async () => {
+      setLoadingPeriods(true);
+      try {
+        const response = await metricsAPI.getPeriods();
+        const backendPeriods = response.data.periods || [];
+        
+        // Get unique periods from actual metrics
+        const metricPeriods = Array.from(new Set(metrics.map((m) => m.period)));
+        
+        // Combine and deduplicate, prioritizing backend periods order
+        const allPeriods = [...backendPeriods];
+        metricPeriods.forEach((period) => {
+          if (!allPeriods.includes(period)) {
+            allPeriods.push(period);
+          }
+        });
+        
+        // Sort descending (newest first)
+        allPeriods.sort().reverse();
+        
+        setPeriods(allPeriods);
+      } catch (error: any) {
+        console.error('Failed to load periods:', error);
+        // Fallback to periods from metrics if backend fails
+        const metricPeriods = Array.from(new Set(metrics.map((m) => m.period)))
+          .sort()
+          .reverse();
+        setPeriods(metricPeriods);
+      } finally {
+        setLoadingPeriods(false);
+      }
+    };
+    
+    loadPeriods();
+  }, [metrics]);
+
   const handleDelete = async (id: string) => {
     if (!confirm(t("social.deleteConfirm"))) return;
 
@@ -82,8 +124,31 @@ export default function SocialPage() {
     }
   };
 
-  // Get unique periods for chips
-  const periods = Array.from(new Set(metrics.map((m) => m.period)))
+  const handleRefresh = async () => {
+    if (!selectedCompanyId) return;
+    
+    try {
+      // Clear cache for this company to force fresh fetch
+      clearCompanyCache(selectedCompanyId);
+      
+      // Fetch fresh data directly from server, bypassing cache
+      setActionLoading("refresh");
+      const response = await metricsAPI.getSocial(selectedCompanyId);
+      const metrics = response.data.metrics || response.data.social || [];
+      
+      // Update store with fresh data from server
+      setSocial(selectedCompanyId, metrics);
+      
+      showToast.success(t("social.refreshSuccess") || "Data refreshed successfully");
+    } catch (error: any) {
+      showToast.error(error.response?.data?.error || "Failed to refresh data");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Get unique periods from metrics (for display purposes)
+  const metricPeriods = Array.from(new Set(metrics.map((m) => m.period)))
     .sort()
     .reverse();
 
@@ -224,51 +289,48 @@ export default function SocialPage() {
           </Link>
         </div>
 
-        {/* Period Chips - At Top */}
-        {periods.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => setFilterPeriod("all")}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  filterPeriod === "all"
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
-              >
-                {t("dashboard.allPeriods")}
-              </button>
-              {periods.slice(0, 3).map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setFilterPeriod(period)}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    filterPeriod === period
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                >
-                  {period}
-                </button>
-              ))}
-              {periods.length > 3 && (
-                <span className="text-xs text-gray-500 px-2">
-                  +{periods.length - 3} more
-                </span>
+        {/* Period Filter Dropdown */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
+              {t("dashboard.period")}:
+            </label>
+            <select
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+              disabled={loadingPeriods}
+              className="flex-1 max-w-xs px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="all">{t("dashboard.allPeriods")}</option>
+              {loadingPeriods ? (
+                <option value="" disabled>{t("common.loading")}...</option>
+              ) : periods.length > 0 ? (
+                periods.map((period) => (
+                  <option key={period} value={period}>
+                    {period}
+                  </option>
+                ))
+              ) : (
+                metricPeriods.map((period) => (
+                  <option key={period} value={period}>
+                    {period}
+                  </option>
+                ))
               )}
-            </div>
+            </select>
           </div>
-        )}
+        </div>
 
         {/* Metrics Table */}
         <ETTable
           columns={tableColumns}
           rows={tableRows}
           loading={loading}
-          title={t("social.title")}
+          title={`${t("social.title")} (${filteredMetrics.length})`}
           showSearch={true}
           showDownloadBtn={true}
-          showRefreshBtn={false}
+          showRefreshBtn={true}
+          onRefresh={handleRefresh}
           showSettingsBtn={false}
           disableDownload={filteredMetrics.length === 0}
           placeholder={t("common.search") + " by period..."}

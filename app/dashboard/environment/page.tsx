@@ -32,6 +32,8 @@ export default function EnvironmentPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPeriod, setFilterPeriod] = useState("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [periods, setPeriods] = useState<string[]>([]);
+  const [loadingPeriods, setLoadingPeriods] = useState(false);
 
   // Use stores
   const { companies, selectedCompany, fetchCompanies } = useCompanyStore();
@@ -68,6 +70,44 @@ export default function EnvironmentPage() {
       fetchEnvironmental(selectedCompanyId);
     }
   }, [selectedCompanyId, fetchEnvironmental]);
+
+  useEffect(() => {
+    // Load periods from backend
+    const loadPeriods = async () => {
+      setLoadingPeriods(true);
+      try {
+        const response = await metricsAPI.getPeriods();
+        const backendPeriods = response.data.periods || [];
+        
+        // Get unique periods from actual metrics
+        const metricPeriods = Array.from(new Set(metrics.map((m) => m.period)));
+        
+        // Combine and deduplicate, prioritizing backend periods order
+        const allPeriods = [...backendPeriods];
+        metricPeriods.forEach((period) => {
+          if (!allPeriods.includes(period)) {
+            allPeriods.push(period);
+          }
+        });
+        
+        // Sort descending (newest first)
+        allPeriods.sort().reverse();
+        
+        setPeriods(allPeriods);
+      } catch (error: any) {
+        console.error('Failed to load periods:', error);
+        // Fallback to periods from metrics if backend fails
+        const metricPeriods = Array.from(new Set(metrics.map((m) => m.period)))
+          .sort()
+          .reverse();
+        setPeriods(metricPeriods);
+      } finally {
+        setLoadingPeriods(false);
+      }
+    };
+    
+    loadPeriods();
+  }, [metrics]);
 
   const handleDelete = async (id: string) => {
     if (!confirm(t("environment.deleteConfirm"))) return;
@@ -108,8 +148,8 @@ export default function EnvironmentPage() {
     }
   };
 
-  // Get unique periods for chips
-  const periods = Array.from(new Set(metrics.map((m) => m.period)))
+  // Get unique periods from metrics (for display purposes)
+  const metricPeriods = Array.from(new Set(metrics.map((m) => m.period)))
     .sort()
     .reverse();
 
@@ -269,7 +309,7 @@ export default function EnvironmentPage() {
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
             <div className="text-xs text-gray-600">Periods</div>
             <div className="text-lg font-semibold text-green-600">
-              {periods.length}
+              {metricPeriods.length}
             </div>
           </div>
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
@@ -296,48 +336,44 @@ export default function EnvironmentPage() {
           </div>
         </div>
 
-        {/* Period Chips - At Top */}
-        {periods.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => setFilterPeriod("all")}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  filterPeriod === "all"
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
-              >
-                {t("dashboard.allPeriods")}
-              </button>
-              {periods.slice(0, 3).map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setFilterPeriod(period)}
-                  className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                    filterPeriod === period
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                >
-                  {period}
-                </button>
-              ))}
-              {periods.length > 3 && (
-                <span className="text-xs text-gray-500 px-2">
-                  +{periods.length - 3} more
-                </span>
+        {/* Period Filter Dropdown */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
+              {t("dashboard.period")}:
+            </label>
+            <select
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+              disabled={loadingPeriods}
+              className="flex-1 max-w-xs px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="all">{t("dashboard.allPeriods")}</option>
+              {loadingPeriods ? (
+                <option value="" disabled>{t("common.loading")}...</option>
+              ) : periods.length > 0 ? (
+                periods.map((period) => (
+                  <option key={period} value={period}>
+                    {period}
+                  </option>
+                ))
+              ) : (
+                metricPeriods.map((period) => (
+                  <option key={period} value={period}>
+                    {period}
+                  </option>
+                ))
               )}
-            </div>
+            </select>
           </div>
-        )}
+        </div>
 
         {/* Metrics Table */}
         <ETTable
           columns={tableColumns}
           rows={tableRows}
           loading={loading}
-          title={t("environment.title")}
+          title={`${t("environment.title")} (${filteredMetrics.length})`}
           showSearch={true}
           showDownloadBtn={true}
           showRefreshBtn={true}
