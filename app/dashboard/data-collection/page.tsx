@@ -2,87 +2,337 @@
 
 import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
-import { metricsAPI } from "@/lib/api";
+import { companyAPI, metricsAPI } from "@/lib/api";
 import { showToast } from "@/lib/toast";
-import { Database, CheckCircle2, XCircle, AlertCircle, Leaf, Users, Shield, Plus, Edit, ArrowRight } from "lucide-react";
+import { Database, Save, CheckCircle2, AlertCircle } from "lucide-react";
 import { useCompanyStore } from "@/stores";
 import { useTranslation } from "@/hooks/useTranslation";
-import Link from "next/link";
-import ETTable from "@/components/ETTable";
+import ETTabs, { Tab } from "@/components/ETTabs";
+import { useRouter } from "next/navigation";
 
-interface ModuleStatus {
-	exists: boolean;
-	metricId?: string;
-	lastUpdated?: string;
-}
-
-interface PeriodStatus {
-	period: string;
-	isComplete: boolean;
-	completionPercentage: number;
-	modules: {
-		environment: ModuleStatus;
-		social: ModuleStatus;
-		governance: ModuleStatus;
-	};
-	lastUpdated: string | null;
-}
-
-interface CollectionHubData {
-	company: {
-		name: string;
-		industry: string;
-	};
-	statistics: {
-		totalPeriods: number;
-		completePeriods: number;
-		incompletePeriods: number;
-		overallCompletion: number;
-		totalMetrics: number;
-		moduleCounts: {
-			environment: number;
-			social: number;
-			governance: number;
-		};
-	};
-	collectionStatus: PeriodStatus[];
-	periods: string[];
-}
+const industries = [
+	"Manufacturing",
+	"IT/Software",
+	"Textiles",
+	"Pharmaceuticals",
+	"Food Processing",
+	"Automotive",
+	"Chemicals",
+	"Others",
+];
 
 export default function DataCollectionHubPage() {
+	const router = useRouter();
 	const { t } = useTranslation();
+	const [activeTab, setActiveTab] = useState("company");
+	const [saving, setSaving] = useState(false);
 	const [loading, setLoading] = useState(false);
-	const [data, setData] = useState<CollectionHubData | null>(null);
-	const [filterPeriod, setFilterPeriod] = useState("all");
-	const [filterStatus, setFilterStatus] = useState<"all" | "complete" | "incomplete">("all");
 
 	// Use company store
 	const { selectedCompany, fetchCompanies } = useCompanyStore();
+
+	// Company Basics Form Data
+	const [companyData, setCompanyData] = useState({
+		legalName: "",
+		cin: "",
+		gst: "",
+		industry: "Manufacturing",
+		employeeCount: "",
+		locations: [""],
+		reportingYear: new Date().getFullYear(),
+	});
+
+	// Environment Data Form Data
+	const [environmentData, setEnvironmentData] = useState({
+		// Energy
+		electricityUnits: "",
+		dieselFuelUsage: "",
+		renewableUsage: false,
+		// Water
+		waterSource: "municipal",
+		waterConsumption: "",
+		waterRecycling: false,
+		// Waste
+		solidWasteQty: "",
+		hazardousWaste: false,
+		disposalMethod: "",
+	});
+
+	// Social Data Form Data
+	const [socialData, setSocialData] = useState({
+		// Workforce
+		totalEmployees: "",
+		permanentEmployees: "",
+		contractEmployees: "",
+		maleCount: "",
+		femaleCount: "",
+		// Health & Safety
+		injuries: "",
+		safetyTraining: false,
+		// Training
+		avgTrainingHours: "",
+	});
+
+	// Governance Data Form Data
+	const [governanceData, setGovernanceData] = useState({
+		// Policies
+		codeOfConduct: false,
+		antiBriberyPolicy: false,
+		poshPolicy: false,
+		// Compliance
+		gstCompliance: "",
+		pfEsic: false,
+	});
 
 	useEffect(() => {
 		fetchCompanies();
 	}, [fetchCompanies]);
 
 	useEffect(() => {
-		if (selectedCompany?._id) {
-			loadCollectionHub();
+		if (selectedCompany) {
+			loadCompanyData();
 		}
-	}, [selectedCompany?._id]);
+	}, [selectedCompany]);
 
-	const loadCollectionHub = async () => {
+	const loadCompanyData = async () => {
 		if (!selectedCompany?._id) return;
 
 		setLoading(true);
 		try {
-			const response = await metricsAPI.getCollectionHub(selectedCompany._id);
-			setData(response.data);
-			showToast.success(t("dataCollection.refreshSuccess") || "Data refreshed successfully");
+			// Load company details
+			const companyResponse = await companyAPI.getById(selectedCompany._id);
+			const company = companyResponse.data.company;
+
+			setCompanyData({
+				legalName: company.legalName || company.name || "",
+				cin: company.cin || "",
+				gst: company.gst || "",
+				industry: company.industry || "Manufacturing",
+				employeeCount: company.employeeCount?.toString() || "",
+				locations: company.locations?.length > 0 ? company.locations : [company.location || ""],
+				reportingYear: company.reportingYear || new Date().getFullYear(),
+			});
+
+			// Load latest metrics for the current period
+			const currentYear = new Date().getFullYear();
+			const currentQuarter = Math.floor((new Date().getMonth() + 3) / 3);
+			const currentPeriod = `${currentYear}-Q${currentQuarter}`;
+
+			try {
+				const [envResponse, socialResponse, govResponse] = await Promise.all([
+					metricsAPI.getEnvironmental(selectedCompany._id).catch(() => ({ data: { metrics: [] } })),
+					metricsAPI.getSocial(selectedCompany._id).catch(() => ({ data: { metrics: [] } })),
+					metricsAPI.getGovernance(selectedCompany._id).catch(() => ({ data: { metrics: [] } })),
+				]);
+
+				const envMetrics = envResponse.data.metrics?.find((m: any) => m.period === currentPeriod);
+				const socialMetrics = socialResponse.data.metrics?.find((m: any) => m.period === currentPeriod);
+				const govMetrics = govResponse.data.metrics?.find((m: any) => m.period === currentPeriod);
+
+				if (envMetrics) {
+					setEnvironmentData({
+						electricityUnits: envMetrics.electricityKwh?.toString() || envMetrics.electricityUsageKwh?.toString() || "",
+						dieselFuelUsage: envMetrics.fuelLitres?.toString() || envMetrics.fuelConsumptionLitres?.toString() || "",
+						renewableUsage: (envMetrics.renewableEnergyPercent || 0) > 0,
+						waterSource: envMetrics.waterSourceMunicipal ? "municipal" : envMetrics.waterSourceGroundwater ? "borewell" : "municipal",
+						waterConsumption: envMetrics.waterUsageKL?.toString() || "",
+						waterRecycling: !!envMetrics.waterReuseRecyclingPractices,
+						solidWasteQty: envMetrics.totalWasteTonnes?.toString() || envMetrics.wasteGeneratedKg?.toString() || "",
+						hazardousWaste: (envMetrics.hazardousWasteTonnes || 0) > 0,
+						disposalMethod: envMetrics.wastewaterTreatmentMetrics || "",
+					});
+				}
+
+				if (socialMetrics) {
+					setSocialData({
+						totalEmployees: (socialMetrics.totalEmployeesPermanent || 0) + (socialMetrics.totalEmployeesContractual || 0) || socialMetrics.totalEmployees?.toString() || "",
+						permanentEmployees: socialMetrics.totalEmployeesPermanent?.toString() || "",
+						contractEmployees: socialMetrics.totalEmployeesContractual?.toString() || "",
+						maleCount: "",
+						femaleCount: "",
+						injuries: socialMetrics.accidentIncidents?.toString() || "",
+						safetyTraining: (socialMetrics.totalTrainingHoursPerEmployee || 0) > 0,
+						avgTrainingHours: socialMetrics.totalTrainingHoursPerEmployee?.toString() || socialMetrics.avgTrainingHours?.toString() || "",
+					});
+				}
+
+				if (govMetrics) {
+					setGovernanceData({
+						codeOfConduct: govMetrics.codeOfConductExists || false,
+						antiBriberyPolicy: govMetrics.antiCorruptionPolicy || false,
+						poshPolicy: govMetrics.whistleblowerPolicyExists || false,
+						gstCompliance: "",
+						pfEsic: false,
+					});
+				}
+			} catch (error) {
+				console.error("Error loading metrics:", error);
+			}
 		} catch (error: any) {
-			showToast.error(error.response?.data?.error || t("dataCollection.loadError"));
+			showToast.error(error.response?.data?.error || "Failed to load company data");
 		} finally {
 			setLoading(false);
 		}
 	};
+
+	const calculateCompletion = () => {
+		let totalFields = 0;
+		let completedFields = 0;
+
+		// Company Basics
+		const companyFields = ["legalName", "cin", "gst", "industry", "employeeCount", "reportingYear"];
+		totalFields += companyFields.length;
+		companyFields.forEach((field) => {
+			if (field === "locations") {
+				if (companyData.locations.some((loc) => loc.trim() !== "")) completedFields++;
+			} else if (companyData[field as keyof typeof companyData]) {
+				completedFields++;
+			}
+		});
+		if (companyData.locations.some((loc) => loc.trim() !== "")) completedFields++;
+
+		// Environment
+		const envFields = ["electricityUnits", "dieselFuelUsage", "waterConsumption", "solidWasteQty"];
+		totalFields += envFields.length;
+		envFields.forEach((field) => {
+			if (environmentData[field as keyof typeof environmentData]) completedFields++;
+		});
+
+		// Social
+		const socialFields = ["totalEmployees", "permanentEmployees", "contractEmployees", "injuries", "avgTrainingHours"];
+		totalFields += socialFields.length;
+		socialFields.forEach((field) => {
+			if (socialData[field as keyof typeof socialData]) completedFields++;
+		});
+
+		// Governance
+		const govFields = ["codeOfConduct", "antiBriberyPolicy", "poshPolicy", "gstCompliance"];
+		totalFields += govFields.length;
+		govFields.forEach((field) => {
+			if (field === "gstCompliance") {
+				if (governanceData.gstCompliance) completedFields++;
+			} else if (governanceData[field as keyof typeof governanceData]) {
+				completedFields++;
+			}
+		});
+
+		return Math.round((completedFields / totalFields) * 100);
+	};
+
+	const handleSaveDraft = async () => {
+		if (!selectedCompany?._id) {
+			showToast.error("Please select a company");
+			return;
+		}
+
+		setSaving(true);
+		try {
+			// Save company basics
+			await companyAPI.update(selectedCompany._id, {
+				legalName: companyData.legalName,
+				cin: companyData.cin,
+				gst: companyData.gst,
+				industry: companyData.industry,
+				employeeCount: parseInt(companyData.employeeCount) || 0,
+				locations: companyData.locations.filter((loc) => loc.trim() !== ""),
+				reportingYear: companyData.reportingYear,
+			});
+
+			// Save metrics (create or update)
+			const currentYear = new Date().getFullYear();
+			const currentQuarter = Math.floor((new Date().getMonth() + 3) / 3);
+			const currentPeriod = `${currentYear}-Q${currentQuarter}`;
+
+			// Environment metrics
+			try {
+				const envResponse = await metricsAPI.getEnvironmental(selectedCompany._id);
+				const existingEnv = envResponse.data.metrics?.find((m: any) => m.period === currentPeriod);
+
+				const envPayload = {
+					period: currentPeriod,
+					electricityKwh: parseFloat(environmentData.electricityUnits) || 0,
+					fuelLitres: parseFloat(environmentData.dieselFuelUsage) || 0,
+					renewableEnergyPercent: environmentData.renewableUsage ? 50 : 0,
+					waterUsageKL: parseFloat(environmentData.waterConsumption) || 0,
+					waterSourceMunicipal: environmentData.waterSource === "municipal",
+					waterSourceGroundwater: environmentData.waterSource === "borewell",
+					totalWasteTonnes: parseFloat(environmentData.solidWasteQty) || 0,
+					hazardousWasteTonnes: environmentData.hazardousWaste ? parseFloat(environmentData.solidWasteQty) * 0.1 : 0,
+					wastewaterTreatmentMetrics: environmentData.disposalMethod,
+					waterReuseRecyclingPractices: environmentData.waterRecycling ? "Yes" : "",
+				};
+
+				if (existingEnv) {
+					await metricsAPI.updateEnvironmental(existingEnv._id, envPayload);
+				} else {
+					await metricsAPI.createEnvironmental({ ...envPayload, companyId: selectedCompany._id });
+				}
+			} catch (error) {
+				console.error("Error saving environment data:", error);
+			}
+
+			// Social metrics
+			try {
+				const socialResponse = await metricsAPI.getSocial(selectedCompany._id);
+				const existingSocial = socialResponse.data.metrics?.find((m: any) => m.period === currentPeriod);
+
+				const socialPayload = {
+					period: currentPeriod,
+					totalEmployeesPermanent: parseInt(socialData.permanentEmployees) || 0,
+					totalEmployeesContractual: parseInt(socialData.contractEmployees) || 0,
+					femalePercentWorkforce: socialData.totalEmployees
+						? ((parseInt(socialData.femaleCount) || 0) / parseInt(socialData.totalEmployees)) * 100
+						: 0,
+					accidentIncidents: parseInt(socialData.injuries) || 0,
+					totalTrainingHoursPerEmployee: parseFloat(socialData.avgTrainingHours) || 0,
+				};
+
+				if (existingSocial) {
+					await metricsAPI.updateSocial(existingSocial._id, socialPayload);
+				} else {
+					await metricsAPI.createSocial({ ...socialPayload, companyId: selectedCompany._id });
+				}
+			} catch (error) {
+				console.error("Error saving social data:", error);
+			}
+
+			// Governance metrics
+			try {
+				const govResponse = await metricsAPI.getGovernance(selectedCompany._id);
+				const existingGov = govResponse.data.metrics?.find((m: any) => m.period === currentPeriod);
+
+				const govPayload = {
+					period: currentPeriod,
+					codeOfConductExists: governanceData.codeOfConduct,
+					antiCorruptionPolicy: governanceData.antiBriberyPolicy,
+					whistleblowerPolicyExists: governanceData.poshPolicy,
+				};
+
+				if (existingGov) {
+					await metricsAPI.updateGovernance(existingGov._id, govPayload);
+				} else {
+					await metricsAPI.createGovernance({ ...govPayload, companyId: selectedCompany._id });
+				}
+			} catch (error) {
+				console.error("Error saving governance data:", error);
+			}
+
+			showToast.success("Data saved as draft successfully");
+		} catch (error: any) {
+			showToast.error(error.response?.data?.error || "Failed to save data");
+		} finally {
+			setSaving(false);
+		}
+	};
+
+	const completionPercentage = calculateCompletion();
+
+	const tabs: Tab[] = [
+		{ key: "company", label: "Company Basics" },
+		{ key: "environment", label: "Environment Data" },
+		{ key: "social", label: "Social Data" },
+		{ key: "governance", label: "Governance Data" },
+	];
 
 	if (!selectedCompany) {
 		return (
@@ -95,147 +345,6 @@ export default function DataCollectionHubPage() {
 			</DashboardLayout>
 		);
 	}
-
-	if (loading) {
-		return (
-			<DashboardLayout>
-				<div className="flex items-center justify-center py-12">
-					<div className="w-6 h-6 border-2 border-green-600 border-t-transparent rounded-full animate-spin"></div>
-				</div>
-			</DashboardLayout>
-		);
-	}
-
-	if (!data) {
-		return (
-			<DashboardLayout>
-				<div className="text-center py-12">
-					<Database className="mx-auto text-gray-400 mb-4" size={48} />
-					<h3 className="text-sm font-semibold text-gray-900 mb-2">{t("dataCollection.noData")}</h3>
-					<p className="text-xs text-gray-600 mb-4">{t("dataCollection.startCollecting")}</p>
-				</div>
-			</DashboardLayout>
-		);
-	}
-
-	// Filter collection status
-	const filteredStatus = data.collectionStatus.filter((status) => {
-		const matchesPeriod = filterPeriod === "all" || status.period === filterPeriod;
-		const matchesStatus =
-			filterStatus === "all" ||
-			(filterStatus === "complete" && status.isComplete) ||
-			(filterStatus === "incomplete" && !status.isComplete);
-		return matchesPeriod && matchesStatus;
-	});
-
-	// Prepare table columns
-	const tableColumns = [
-		{ label: t("dataCollection.period"), field: "period", sortable: true },
-		{ label: t("dataCollection.status"), field: "status", sortable: false },
-		{ label: t("dataCollection.completion"), field: "completion", sortable: true },
-		{ label: t("environment.title"), field: "environment", sortable: false },
-		{ label: t("social.title"), field: "social", sortable: false },
-		{ label: t("governance.title"), field: "governance", sortable: false },
-		{ label: t("dataCollection.lastUpdated"), field: "lastUpdated", sortable: true },
-		{ label: t("common.actions"), field: "actions", sortable: false },
-	];
-
-	// Prepare table rows
-	const tableRows = filteredStatus.map((status) => {
-		// Determine status color based on completion percentage
-		let statusColor = "";
-		let statusBg = "";
-		let statusIcon = null;
-		
-		if (status.isComplete) {
-			// Complete - green shades
-			statusColor = "text-green-700";
-			statusBg = "bg-green-100";
-			statusIcon = <CheckCircle2 size={12} className="text-green-600" />;
-		} else if (status.completionPercentage >= 66) {
-			// Almost complete - blue shades
-			statusColor = "text-blue-700";
-			statusBg = "bg-blue-100";
-			statusIcon = <AlertCircle size={12} className="text-blue-600" />;
-		} else if (status.completionPercentage >= 33) {
-			// Partially complete - yellow/orange shades
-			statusColor = "text-orange-700";
-			statusBg = "bg-orange-100";
-			statusIcon = <AlertCircle size={12} className="text-orange-600" />;
-		} else {
-			// Incomplete - red shades
-			statusColor = "text-red-700";
-			statusBg = "bg-red-100";
-			statusIcon = <AlertCircle size={12} className="text-red-600" />;
-		}
-
-		return {
-			_id: status.period,
-			period: status.period,
-			status: (
-				<span className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${statusBg} ${statusColor} rounded-md text-xs font-semibold shadow-sm`}>
-					{statusIcon}
-					{status.isComplete ? t("dataCollection.complete") : t("dataCollection.incomplete")}
-				</span>
-			),
-		completion: `${status.completionPercentage}%`,
-		environment: status.modules.environment.exists ? (
-			<Link
-				href={`/dashboard/environment/edit/${status.modules.environment.metricId}`}
-				className="inline-flex items-center gap-1 text-green-600 hover:text-green-700 text-xs"
-			>
-				<CheckCircle2 size={12} />
-				{t("common.edit")}
-			</Link>
-		) : (
-			<Link
-				href="/dashboard/environment/create"
-				className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 text-xs"
-			>
-				<Plus size={12} />
-				{t("common.create")}
-			</Link>
-		),
-		social: status.modules.social.exists ? (
-			<Link
-				href={`/dashboard/social/edit/${status.modules.social.metricId}`}
-				className="inline-flex items-center gap-1 text-green-600 hover:text-green-700 text-xs"
-			>
-				<CheckCircle2 size={12} />
-				{t("common.edit")}
-			</Link>
-		) : (
-			<Link
-				href="/dashboard/social/create"
-				className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 text-xs"
-			>
-				<Plus size={12} />
-				{t("common.create")}
-			</Link>
-		),
-		governance: status.modules.governance.exists ? (
-			<Link
-				href={`/dashboard/governance/edit/${status.modules.governance.metricId}`}
-				className="inline-flex items-center gap-1 text-green-600 hover:text-green-700 text-xs"
-			>
-				<CheckCircle2 size={12} />
-				{t("common.edit")}
-			</Link>
-		) : (
-			<Link
-				href="/dashboard/governance/create"
-				className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-700 text-xs"
-			>
-				<Plus size={12} />
-				{t("common.create")}
-			</Link>
-		),
-			lastUpdated: status.lastUpdated
-				? new Date(status.lastUpdated).toLocaleDateString()
-				: "-",
-			actions: { period: status.period },
-		};
-	});
 
 	return (
 		<DashboardLayout>
@@ -250,221 +359,504 @@ export default function DataCollectionHubPage() {
 							{selectedCompany?.name} - {t("dataCollection.subtitle")}
 						</p>
 					</div>
-					<button
-						onClick={loadCollectionHub}
-						disabled={loading}
-						className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 text-gray-700 rounded text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50"
-					>
-						<Database size={14} className={loading ? "animate-spin" : ""} />
-						{t("dataCollection.refresh")}
-					</button>
-				</div>
-
-				{/* Stats Cards */}
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-2">
-					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-						<div className="text-xs text-gray-600">{t("dataCollection.totalPeriods")}</div>
-						<div className="text-lg font-semibold text-gray-900">
-							{data.statistics.totalPeriods}
-						</div>
-						<div className="text-xs text-gray-500 mt-0.5">
-							{data.statistics.completePeriods} {t("dataCollection.complete")}
-						</div>
-					</div>
-					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-						<div className="text-xs text-gray-600">{t("dataCollection.overallCompletion")}</div>
-						<div className="text-lg font-semibold text-green-600">
-							{data.statistics.overallCompletion}%
-						</div>
-						<div className="w-full bg-gray-200 rounded-full h-1.5 mt-1">
-							<div
-								className="bg-green-600 h-1.5 rounded-full transition-all"
-								style={{ width: `${data.statistics.overallCompletion}%` }}
-							></div>
-						</div>
-					</div>
-					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-						<div className="text-xs text-gray-600">{t("dataCollection.totalMetrics")}</div>
-						<div className="text-lg font-semibold text-blue-600">
-							{data.statistics.totalMetrics}
-						</div>
-						<div className="text-xs text-gray-500 mt-0.5">
-							E: {data.statistics.moduleCounts.environment}, S: {data.statistics.moduleCounts.social}, G: {data.statistics.moduleCounts.governance}
-						</div>
-					</div>
-					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-						<div className="text-xs text-gray-600">{t("dataCollection.incompletePeriods")}</div>
-						<div className="text-lg font-semibold text-yellow-600">
-							{data.statistics.incompletePeriods}
-						</div>
-						<div className="text-xs text-gray-500 mt-0.5">
-							{t("dataCollection.needsAttention")}
-						</div>
-					</div>
-				</div>
-
-				{/* Module Status Cards */}
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-					<Link
-						href="/dashboard/environment"
-						className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 hover:shadow-md transition-all group"
-					>
-						<div className="flex items-center justify-between mb-2">
+					<div className="flex items-center gap-3">
+						{/* Completion Indicator */}
+						<div className="flex items-center gap-2 bg-white rounded-lg shadow-sm border border-gray-200 px-3 py-2">
+							<div className="text-xs text-gray-600">Completion:</div>
 							<div className="flex items-center gap-2">
-								<div className="p-1.5 bg-green-100 rounded-lg">
-									<Leaf size={16} className="text-green-600" />
+								<div className="w-24 bg-gray-200 rounded-full h-2">
+									<div
+										className="bg-green-600 h-2 rounded-full transition-all"
+										style={{ width: `${completionPercentage}%` }}
+									></div>
 								</div>
-								<h3 className="text-sm font-semibold text-gray-900 group-hover:text-green-600">
-									{t("environment.title")}
-								</h3>
+								<span className="text-sm font-semibold text-gray-900">{completionPercentage}%</span>
 							</div>
-							<ArrowRight size={14} className="text-gray-400 group-hover:text-green-600" />
 						</div>
-						<div className="text-xs text-gray-600 mb-1">{t("dataCollection.metricsCollected")}</div>
-						<div className="text-lg font-semibold text-green-600">
-							{data.statistics.moduleCounts.environment}
-						</div>
-					</Link>
-
-					<Link
-						href="/dashboard/social"
-						className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 hover:shadow-md transition-all group"
-					>
-						<div className="flex items-center justify-between mb-2">
-							<div className="flex items-center gap-2">
-								<div className="p-1.5 bg-blue-100 rounded-lg">
-									<Users size={16} className="text-blue-600" />
-								</div>
-								<h3 className="text-sm font-semibold text-gray-900 group-hover:text-blue-600">
-									{t("social.title")}
-								</h3>
-							</div>
-							<ArrowRight size={14} className="text-gray-400 group-hover:text-blue-600" />
-						</div>
-						<div className="text-xs text-gray-600 mb-1">{t("dataCollection.metricsCollected")}</div>
-						<div className="text-lg font-semibold text-blue-600">
-							{data.statistics.moduleCounts.social}
-						</div>
-					</Link>
-
-					<Link
-						href="/dashboard/governance"
-						className="bg-white rounded-lg shadow-sm border border-gray-200 p-3 hover:shadow-md transition-all group"
-					>
-						<div className="flex items-center justify-between mb-2">
-							<div className="flex items-center gap-2">
-								<div className="p-1.5 bg-purple-100 rounded-lg">
-									<Shield size={16} className="text-purple-600" />
-								</div>
-								<h3 className="text-sm font-semibold text-gray-900 group-hover:text-purple-600">
-									{t("governance.title")}
-								</h3>
-							</div>
-							<ArrowRight size={14} className="text-gray-400 group-hover:text-purple-600" />
-						</div>
-						<div className="text-xs text-gray-600 mb-1">{t("dataCollection.metricsCollected")}</div>
-						<div className="text-lg font-semibold text-purple-600">
-							{data.statistics.moduleCounts.governance}
-						</div>
-					</Link>
-				</div>
-
-				{/* Filters */}
-				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-					<div className="flex items-center gap-2 flex-wrap">
-						{/* Period Filter */}
-						<select
-							value={filterPeriod}
-							onChange={(e) => setFilterPeriod(e.target.value)}
-							className="px-3 py-1 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-						>
-							<option value="all">{t("dataCollection.allPeriods")}</option>
-							{data.periods.slice(0, 10).map((period) => (
-								<option key={period} value={period}>
-									{period}
-								</option>
-							))}
-						</select>
-
-						{/* Status Filter */}
 						<button
-							onClick={() => setFilterStatus("all")}
-							className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-								filterStatus === "all"
-									? "bg-green-600 text-white"
-									: "bg-gray-200 text-gray-700 hover:bg-gray-300"
-							}`}
+							onClick={handleSaveDraft}
+							disabled={saving}
+							className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 transition-colors disabled:opacity-50"
 						>
-							{t("dataCollection.all")}
-						</button>
-						<button
-							onClick={() => setFilterStatus("complete")}
-							className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-								filterStatus === "complete"
-									? "bg-green-600 text-white"
-									: "bg-gray-200 text-gray-700 hover:bg-gray-300"
-							}`}
-						>
-							{t("dataCollection.complete")}
-						</button>
-						<button
-							onClick={() => setFilterStatus("incomplete")}
-							className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-								filterStatus === "incomplete"
-									? "bg-yellow-600 text-white"
-									: "bg-gray-200 text-gray-700 hover:bg-gray-300"
-							}`}
-						>
-							{t("dataCollection.incomplete")}
+							<Save size={14} />
+							{saving ? "Saving..." : "Save as Draft"}
 						</button>
 					</div>
 				</div>
 
-				{/* Collection Status Table */}
-				<ETTable
-					columns={tableColumns}
-					rows={tableRows}
-					loading={loading}
-					title={`${t("dataCollection.collectionStatus")} (${filteredStatus.length})`}
-					showSearch={false}
-					showDownloadBtn={true}
-					showRefreshBtn={true}
-					showSettingsBtn={false}
-					disableDownload={filteredStatus.length === 0}
-					downloadName={`data-collection-${new Date().toISOString().split("T")[0]}`}
-					onRefresh={loadCollectionHub}
-					excelColumns={{
-						period: t("dataCollection.period"),
-						status: t("dataCollection.status"),
-						completion: t("dataCollection.completion"),
-						environment: t("environment.title"),
-						social: t("social.title"),
-						governance: t("governance.title"),
-						lastUpdated: t("dataCollection.lastUpdated"),
-					}}
-					excelRows={filteredStatus.map((status) => ({
-						period: status.period,
-						status: status.isComplete ? t("dataCollection.complete") : t("dataCollection.incomplete"),
-						completion: `${status.completionPercentage}%`,
-						environment: status.modules.environment.exists ? "Yes" : "No",
-						social: status.modules.social.exists ? "Yes" : "No",
-						governance: status.modules.governance.exists ? "Yes" : "No",
-						lastUpdated: status.lastUpdated ? new Date(status.lastUpdated).toLocaleDateString() : "-",
-					}))}
-					emptyText={t("dataCollection.noDataFound")}
-					totalRecords={filteredStatus.length}
-					paginationEnabled={true}
-					rowCount={15}
-				>
-					{filteredStatus.length === 0 && (
-						<div className="text-center py-8">
-							<Database size={32} className="mx-auto mb-2 text-gray-300" />
-							<p className="text-xs text-gray-500">{t("dataCollection.noDataFound")}</p>
+				{/* Tabs */}
+				<ETTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
+					{/* Tab 1: Company Basics */}
+					{activeTab === "company" && (
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+							<h2 className="text-sm font-semibold text-gray-900 mb-4">Company Basics</h2>
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+								<div>
+									<label className="block text-xs font-medium text-gray-700 mb-1">
+										Legal Name *
+									</label>
+									<input
+										type="text"
+										value={companyData.legalName}
+										onChange={(e) => setCompanyData({ ...companyData, legalName: e.target.value })}
+										className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+										placeholder="Enter legal name"
+									/>
+								</div>
+								<div>
+									<label className="block text-xs font-medium text-gray-700 mb-1">
+										CIN (Corporate Identification Number)
+									</label>
+									<input
+										type="text"
+										value={companyData.cin}
+										onChange={(e) => setCompanyData({ ...companyData, cin: e.target.value })}
+										className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+										placeholder="Enter CIN"
+									/>
+								</div>
+								<div>
+									<label className="block text-xs font-medium text-gray-700 mb-1">
+										GST Number
+									</label>
+									<input
+										type="text"
+										value={companyData.gst}
+										onChange={(e) => setCompanyData({ ...companyData, gst: e.target.value })}
+										className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+										placeholder="Enter GST number"
+									/>
+								</div>
+								<div>
+									<label className="block text-xs font-medium text-gray-700 mb-1">
+										Industry *
+									</label>
+									<select
+										value={companyData.industry}
+										onChange={(e) => setCompanyData({ ...companyData, industry: e.target.value })}
+										className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+									>
+										{industries.map((ind) => (
+											<option key={ind} value={ind}>
+												{ind}
+											</option>
+										))}
+									</select>
+								</div>
+								<div>
+									<label className="block text-xs font-medium text-gray-700 mb-1">
+										Employee Count *
+									</label>
+									<input
+										type="number"
+										value={companyData.employeeCount}
+										onChange={(e) => setCompanyData({ ...companyData, employeeCount: e.target.value })}
+										className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+										placeholder="Enter employee count"
+										min="10"
+										max="500"
+									/>
+								</div>
+								<div>
+									<label className="block text-xs font-medium text-gray-700 mb-1">
+										Reporting Year *
+									</label>
+									<input
+										type="number"
+										value={companyData.reportingYear}
+										onChange={(e) => setCompanyData({ ...companyData, reportingYear: parseInt(e.target.value) || new Date().getFullYear() })}
+										className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+										min="2020"
+										max="2030"
+									/>
+								</div>
+								<div className="md:col-span-2">
+									<label className="block text-xs font-medium text-gray-700 mb-1">
+										Locations
+									</label>
+									{companyData.locations.map((location, index) => (
+										<div key={index} className="flex gap-2 mb-2">
+											<input
+												type="text"
+												value={location}
+												onChange={(e) => {
+													const newLocations = [...companyData.locations];
+													newLocations[index] = e.target.value;
+													setCompanyData({ ...companyData, locations: newLocations });
+												}}
+												className="flex-1 px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder={`Location ${index + 1}`}
+											/>
+											{companyData.locations.length > 1 && (
+												<button
+													type="button"
+													onClick={() => {
+														const newLocations = companyData.locations.filter((_, i) => i !== index);
+														setCompanyData({ ...companyData, locations: newLocations });
+													}}
+													className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg"
+												>
+													Remove
+												</button>
+											)}
+										</div>
+									))}
+									<button
+										type="button"
+										onClick={() => setCompanyData({ ...companyData, locations: [...companyData.locations, ""] })}
+										className="text-sm text-green-600 hover:text-green-700 font-medium"
+									>
+										+ Add Location
+									</button>
+								</div>
+							</div>
 						</div>
 					)}
-				</ETTable>
+
+					{/* Tab 2: Environment Data */}
+					{activeTab === "environment" && (
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+							<h2 className="text-sm font-semibold text-gray-900 mb-4">Environment Data</h2>
+							<div className="space-y-6">
+								{/* Energy Section */}
+								<div>
+									<h3 className="text-xs font-semibold text-gray-700 mb-3">a) Energy</h3>
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Electricity Units (kWh)
+											</label>
+											<input
+												type="number"
+												value={environmentData.electricityUnits}
+												onChange={(e) => setEnvironmentData({ ...environmentData, electricityUnits: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter electricity units"
+												min="0"
+											/>
+										</div>
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Diesel / Fuel Usage (L)
+											</label>
+											<input
+												type="number"
+												value={environmentData.dieselFuelUsage}
+												onChange={(e) => setEnvironmentData({ ...environmentData, dieselFuelUsage: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter fuel usage"
+												min="0"
+											/>
+										</div>
+										<div className="md:col-span-2">
+											<label className="flex items-center gap-2">
+												<input
+													type="checkbox"
+													checked={environmentData.renewableUsage}
+													onChange={(e) => setEnvironmentData({ ...environmentData, renewableUsage: e.target.checked })}
+													className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+												/>
+												<span className="text-sm text-gray-700">Renewable usage (Yes/No)</span>
+											</label>
+										</div>
+									</div>
+								</div>
+
+								{/* Water Section */}
+								<div>
+									<h3 className="text-xs font-semibold text-gray-700 mb-3">b) Water</h3>
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Source
+											</label>
+											<select
+												value={environmentData.waterSource}
+												onChange={(e) => setEnvironmentData({ ...environmentData, waterSource: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+											>
+												<option value="municipal">Municipal</option>
+												<option value="borewell">Borewell</option>
+											</select>
+										</div>
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Consumption (KL)
+											</label>
+											<input
+												type="number"
+												value={environmentData.waterConsumption}
+												onChange={(e) => setEnvironmentData({ ...environmentData, waterConsumption: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter water consumption"
+												min="0"
+											/>
+										</div>
+										<div className="md:col-span-2">
+											<label className="flex items-center gap-2">
+												<input
+													type="checkbox"
+													checked={environmentData.waterRecycling}
+													onChange={(e) => setEnvironmentData({ ...environmentData, waterRecycling: e.target.checked })}
+													className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+												/>
+												<span className="text-sm text-gray-700">Recycling (Yes/No)</span>
+											</label>
+										</div>
+									</div>
+								</div>
+
+								{/* Waste Section */}
+								<div>
+									<h3 className="text-xs font-semibold text-gray-700 mb-3">c) Waste</h3>
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Solid Waste Quantity (tonnes)
+											</label>
+											<input
+												type="number"
+												value={environmentData.solidWasteQty}
+												onChange={(e) => setEnvironmentData({ ...environmentData, solidWasteQty: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter solid waste quantity"
+												min="0"
+											/>
+										</div>
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Disposal Method
+											</label>
+											<input
+												type="text"
+												value={environmentData.disposalMethod}
+												onChange={(e) => setEnvironmentData({ ...environmentData, disposalMethod: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter disposal method"
+											/>
+										</div>
+										<div className="md:col-span-2">
+											<label className="flex items-center gap-2">
+												<input
+													type="checkbox"
+													checked={environmentData.hazardousWaste}
+													onChange={(e) => setEnvironmentData({ ...environmentData, hazardousWaste: e.target.checked })}
+													className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+												/>
+												<span className="text-sm text-gray-700">Hazardous waste (Yes/No)</span>
+											</label>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Tab 3: Social Data */}
+					{activeTab === "social" && (
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+							<h2 className="text-sm font-semibold text-gray-900 mb-4">Social Data</h2>
+							<div className="space-y-6">
+								{/* Workforce Section */}
+								<div>
+									<h3 className="text-xs font-semibold text-gray-700 mb-3">a) Workforce</h3>
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Total Employees
+											</label>
+											<input
+												type="number"
+												value={socialData.totalEmployees}
+												onChange={(e) => setSocialData({ ...socialData, totalEmployees: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter total employees"
+												min="0"
+											/>
+										</div>
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Permanent Employees
+											</label>
+											<input
+												type="number"
+												value={socialData.permanentEmployees}
+												onChange={(e) => setSocialData({ ...socialData, permanentEmployees: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter permanent employees"
+												min="0"
+											/>
+										</div>
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Contract Employees
+											</label>
+											<input
+												type="number"
+												value={socialData.contractEmployees}
+												onChange={(e) => setSocialData({ ...socialData, contractEmployees: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter contract employees"
+												min="0"
+											/>
+										</div>
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Male Count
+											</label>
+											<input
+												type="number"
+												value={socialData.maleCount}
+												onChange={(e) => setSocialData({ ...socialData, maleCount: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter male count"
+												min="0"
+											/>
+										</div>
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Female Count
+											</label>
+											<input
+												type="number"
+												value={socialData.femaleCount}
+												onChange={(e) => setSocialData({ ...socialData, femaleCount: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter female count"
+												min="0"
+											/>
+										</div>
+									</div>
+								</div>
+
+								{/* Health & Safety Section */}
+								<div>
+									<h3 className="text-xs font-semibold text-gray-700 mb-3">b) Health & Safety</h3>
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Injuries
+											</label>
+											<input
+												type="number"
+												value={socialData.injuries}
+												onChange={(e) => setSocialData({ ...socialData, injuries: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter number of injuries"
+												min="0"
+											/>
+										</div>
+										<div className="md:col-span-2">
+											<label className="flex items-center gap-2">
+												<input
+													type="checkbox"
+													checked={socialData.safetyTraining}
+													onChange={(e) => setSocialData({ ...socialData, safetyTraining: e.target.checked })}
+													className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+												/>
+												<span className="text-sm text-gray-700">Safety training (Yes/No)</span>
+											</label>
+										</div>
+									</div>
+								</div>
+
+								{/* Training Section */}
+								<div>
+									<h3 className="text-xs font-semibold text-gray-700 mb-3">c) Training</h3>
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												Avg Training Hours
+											</label>
+											<input
+												type="number"
+												value={socialData.avgTrainingHours}
+												onChange={(e) => setSocialData({ ...socialData, avgTrainingHours: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter average training hours"
+												min="0"
+												step="0.1"
+											/>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
+
+					{/* Tab 4: Governance Data */}
+					{activeTab === "governance" && (
+						<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+							<h2 className="text-sm font-semibold text-gray-900 mb-4">Governance Data</h2>
+							<div className="space-y-6">
+								{/* Policies Section */}
+								<div>
+									<h3 className="text-xs font-semibold text-gray-700 mb-3">a) Policies</h3>
+									<div className="space-y-3">
+										<label className="flex items-center gap-2">
+											<input
+												type="checkbox"
+												checked={governanceData.codeOfConduct}
+												onChange={(e) => setGovernanceData({ ...governanceData, codeOfConduct: e.target.checked })}
+												className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+											/>
+											<span className="text-sm text-gray-700">Code of conduct (Yes/No)</span>
+										</label>
+										<label className="flex items-center gap-2">
+											<input
+												type="checkbox"
+												checked={governanceData.antiBriberyPolicy}
+												onChange={(e) => setGovernanceData({ ...governanceData, antiBriberyPolicy: e.target.checked })}
+												className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+											/>
+											<span className="text-sm text-gray-700">Anti-bribery policy (Yes/No)</span>
+										</label>
+										<label className="flex items-center gap-2">
+											<input
+												type="checkbox"
+												checked={governanceData.poshPolicy}
+												onChange={(e) => setGovernanceData({ ...governanceData, poshPolicy: e.target.checked })}
+												className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+											/>
+											<span className="text-sm text-gray-700">POSH policy (Yes/No)</span>
+										</label>
+									</div>
+								</div>
+
+								{/* Compliance Section */}
+								<div>
+									<h3 className="text-xs font-semibold text-gray-700 mb-3">b) Compliance</h3>
+									<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+										<div>
+											<label className="block text-xs font-medium text-gray-700 mb-1">
+												GST Compliance
+											</label>
+											<input
+												type="text"
+												value={governanceData.gstCompliance}
+												onChange={(e) => setGovernanceData({ ...governanceData, gstCompliance: e.target.value })}
+												className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
+												placeholder="Enter GST compliance status"
+											/>
+										</div>
+										<div className="md:col-span-2">
+											<label className="flex items-center gap-2">
+												<input
+													type="checkbox"
+													checked={governanceData.pfEsic}
+													onChange={(e) => setGovernanceData({ ...governanceData, pfEsic: e.target.checked })}
+													className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+												/>
+												<span className="text-sm text-gray-700">PF / ESIC (Yes/No)</span>
+											</label>
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
+				</ETTabs>
 			</div>
 		</DashboardLayout>
 	);
 }
-
