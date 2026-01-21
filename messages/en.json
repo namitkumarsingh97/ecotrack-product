@@ -127,6 +127,7 @@
   "esgScorecard": {
     "title": "ESG Scorecard",
     "subtitle": "Comprehensive ESG performance overview",
+    "overallESG": "Overall ESG Score",
     "overallScore": "Overall ESG Score",
     "scoreDistribution": "Score Distribution",
     "scoreTrend": "Score Trend",

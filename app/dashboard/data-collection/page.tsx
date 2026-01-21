@@ -141,20 +141,43 @@ export default function DataCollectionHubPage() {
 	];
 
 	// Prepare table rows
-	const tableRows = filteredStatus.map((status) => ({
-		_id: status.period,
-		period: status.period,
-		status: status.isComplete ? (
-			<span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs font-medium">
-				<CheckCircle2 size={12} />
-				{t("dataCollection.complete")}
-			</span>
-		) : (
-			<span className="inline-flex items-center gap-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs font-medium">
-				<AlertCircle size={12} />
-				{t("dataCollection.incomplete")}
-			</span>
-		),
+	const tableRows = filteredStatus.map((status) => {
+		// Determine status color based on completion percentage
+		let statusColor = "";
+		let statusBg = "";
+		let statusIcon = null;
+		
+		if (status.isComplete) {
+			// Complete - green shades
+			statusColor = "text-green-700";
+			statusBg = "bg-green-100";
+			statusIcon = <CheckCircle2 size={12} className="text-green-600" />;
+		} else if (status.completionPercentage >= 66) {
+			// Almost complete - blue shades
+			statusColor = "text-blue-700";
+			statusBg = "bg-blue-100";
+			statusIcon = <AlertCircle size={12} className="text-blue-600" />;
+		} else if (status.completionPercentage >= 33) {
+			// Partially complete - yellow/orange shades
+			statusColor = "text-orange-700";
+			statusBg = "bg-orange-100";
+			statusIcon = <AlertCircle size={12} className="text-orange-600" />;
+		} else {
+			// Incomplete - red shades
+			statusColor = "text-red-700";
+			statusBg = "bg-red-100";
+			statusIcon = <AlertCircle size={12} className="text-red-600" />;
+		}
+
+		return {
+			_id: status.period,
+			period: status.period,
+			status: (
+				<span className={`inline-flex items-center gap-1.5 px-2.5 py-1 ${statusBg} ${statusColor} rounded-md text-xs font-semibold shadow-sm`}>
+					{statusIcon}
+					{status.isComplete ? t("dataCollection.complete") : t("dataCollection.incomplete")}
+				</span>
+			),
 		completion: `${status.completionPercentage}%`,
 		environment: status.modules.environment.exists ? (
 			<Link
@@ -207,11 +230,12 @@ export default function DataCollectionHubPage() {
 				{t("common.create")}
 			</Link>
 		),
-		lastUpdated: status.lastUpdated
-			? new Date(status.lastUpdated).toLocaleDateString()
-			: "-",
-		actions: { period: status.period },
-	}));
+			lastUpdated: status.lastUpdated
+				? new Date(status.lastUpdated).toLocaleDateString()
+				: "-",
+			actions: { period: status.period },
+		};
+	});
 
 	return (
 		<DashboardLayout>

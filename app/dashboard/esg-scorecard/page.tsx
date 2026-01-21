@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { esgAPI } from "@/lib/api";
 import { showToast } from "@/lib/toast";
-import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react";
+import { BarChart3, TrendingUp, TrendingDown, Minus, RefreshCw, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { useCompanyStore } from "@/stores";
 import { useTranslation } from "@/hooks/useTranslation";
 import LineChart from "@/components/charts/LineChart";
 import DoughnutChart from "@/components/charts/DoughnutChart";
+import ETTabs, { Tab } from "@/components/ETTabs";
 
 interface ScoreGrade {
 	grade: string;
@@ -20,12 +21,36 @@ interface Scorecard {
 	period: string;
 	overallScore: number;
 	overallGrade: ScoreGrade;
+	overallRisk: 'Low' | 'Medium' | 'High';
+	overallRiskColor: string;
+	dataCompleteness: number;
 	environmentalScore: number;
 	environmentalGrade: ScoreGrade;
+	environmentalRisk: 'Low' | 'Medium' | 'High';
+	environmentalRiskColor: string;
+	environmentalCompleteness: number;
+	environmentalCompleted: string[];
+	environmentalMissing: string[];
+	environmentalMissingCritical: string[];
+	environmentalImpact: string;
 	socialScore: number;
 	socialGrade: ScoreGrade;
+	socialRisk: 'Low' | 'Medium' | 'High';
+	socialRiskColor: string;
+	socialCompleteness: number;
+	socialCompleted: string[];
+	socialMissing: string[];
+	socialMissingCritical: string[];
+	socialImpact: string;
 	governanceScore: number;
 	governanceGrade: ScoreGrade;
+	governanceRisk: 'Low' | 'Medium' | 'High';
+	governanceRiskColor: string;
+	governanceCompleteness: number;
+	governanceCompleted: string[];
+	governanceMissing: string[];
+	governanceMissingCritical: string[];
+	governanceImpact: string;
 	calculatedAt: string;
 	previousPeriod: {
 		period: string;
@@ -60,6 +85,7 @@ export default function ESGScorecardPage() {
 	const [periods, setPeriods] = useState<string[]>([]);
 	const [selectedPeriod, setSelectedPeriod] = useState<string>("latest");
 	const [refreshing, setRefreshing] = useState(false);
+	const [activeTab, setActiveTab] = useState<string>("overall");
 
 	// Use company store
 	const { selectedCompany, fetchCompanies } = useCompanyStore();
@@ -177,6 +203,14 @@ export default function ESGScorecardPage() {
 		Governance: trend.governanceScore,
 	}));
 
+	// Tabs configuration
+	const tabs: Tab[] = [
+		{ key: "overall", label: t("esgScorecard.overallESG") || "Overall ESG Score" },
+		{ key: "environmental", label: t("reports.environmental") || "Environmental" },
+		{ key: "social", label: t("reports.social") || "Social" },
+		{ key: "governance", label: t("reports.governance") || "Governance" },
+	];
+
 	return (
 		<DashboardLayout>
 			<div className="space-y-4">
@@ -217,8 +251,13 @@ export default function ESGScorecardPage() {
 					</div>
 				</div>
 
-				{/* Overall Score Card */}
-				<div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-sm border border-green-200 p-4">
+				{/* Tabs */}
+				<ETTabs tabs={tabs} activeTab={activeTab} onTabChange={setActiveTab}>
+					{/* Tab 1: Overall ESG Score */}
+					{activeTab === "overall" && (
+						<div className="space-y-4">
+							{/* Overall Score Card */}
+							<div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-sm border border-green-200 p-4">
 					<div className="flex items-center justify-between mb-3">
 						<div>
 							<h2 className="text-xs font-medium text-gray-700 mb-1">
@@ -254,20 +293,54 @@ export default function ESGScorecardPage() {
 							</div>
 						)}
 					</div>
-					{/* Progress Bar */}
-					<div className="w-full bg-gray-200 rounded-full h-2">
-						<div
-							className="h-2 rounded-full transition-all"
-							style={{
-								width: `${scorecard.overallScore}%`,
-								backgroundColor: scorecard.overallGrade.color,
-							}}
-						></div>
-					</div>
-				</div>
+								{/* Progress Bar */}
+								<div className="w-full bg-gray-200 rounded-full h-2">
+									<div
+										className="h-2 rounded-full transition-all"
+										style={{
+											width: `${scorecard.overallScore}%`,
+											backgroundColor: scorecard.overallGrade.color,
+										}}
+									></div>
+								</div>
+							</div>
 
-				{/* E, S, G Score Cards */}
-				<div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+							{/* Risk Level & Data Completeness */}
+							<div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+								<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+									<div className="text-xs text-gray-600 mb-1">Risk Level</div>
+									<div className="flex items-center gap-2">
+										<span
+											className="px-3 py-1 rounded-lg text-sm font-semibold text-white"
+											style={{ backgroundColor: scorecard.overallRiskColor }}
+										>
+											{scorecard.overallRisk}
+										</span>
+										<span className="text-xs text-gray-600">
+											{scorecard.overallRisk === 'Low' ? 'Low risk - Good performance' : 
+											 scorecard.overallRisk === 'Medium' ? 'Medium risk - Needs improvement' : 
+											 'High risk - Immediate attention required'}
+										</span>
+									</div>
+								</div>
+								<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+									<div className="text-xs text-gray-600 mb-1">Data Completeness</div>
+									<div className="flex items-center gap-2">
+										<div className="text-2xl font-bold text-blue-600">
+											{scorecard.dataCompleteness}%
+										</div>
+										<div className="w-full bg-gray-200 rounded-full h-2">
+											<div
+												className="bg-blue-600 h-2 rounded-full transition-all"
+												style={{ width: `${scorecard.dataCompleteness}%` }}
+											></div>
+										</div>
+									</div>
+								</div>
+							</div>
+
+							{/* E, S, G Score Cards */}
+							<div className="grid grid-cols-1 md:grid-cols-3 gap-2">
 					{/* Environmental */}
 					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
 						<div className="flex items-center justify-between mb-2">
@@ -380,11 +453,11 @@ export default function ESGScorecardPage() {
 								}}
 							></div>
 						</div>
-					</div>
-				</div>
+							</div>
+							</div>
 
-				{/* Charts Row */}
-				<div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
+							{/* Charts Row */}
+							<div className="grid grid-cols-1 lg:grid-cols-2 gap-2">
 					{/* Score Distribution - Doughnut Chart */}
 					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
 						<h3 className="text-xs font-semibold text-gray-900 mb-2">
@@ -421,27 +494,318 @@ export default function ESGScorecardPage() {
 							<div className="flex items-center justify-center h-[200px] text-xs text-gray-500">
 								{t("esgScorecard.noTrendData")}
 							</div>
-						)}
-					</div>
-				</div>
+							)}
+							</div>
+							</div>
+						</div>
+					)}
 
-				{/* Additional Info */}
-				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-					<div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-						<div>
-							<div className="text-gray-600 mb-1">{t("esgScorecard.calculatedAt")}</div>
-							<div className="text-gray-900 font-medium">
-								{new Date(scorecard.calculatedAt).toLocaleString()}
+					{/* Tab 2: Environmental Score */}
+					{activeTab === "environmental" && (
+						<div className="space-y-4">
+							{/* Environmental Score Card */}
+							<div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg shadow-sm border border-green-200 p-4">
+								<div className="flex items-center justify-between mb-3">
+									<div>
+										<h2 className="text-xs font-medium text-gray-700 mb-1">
+											{t("reports.environmental")} Score
+										</h2>
+										<div className="flex items-baseline gap-3">
+											<div className="text-4xl font-bold text-gray-900">
+												{scorecard.environmentalScore.toFixed(1)}
+											</div>
+											<div
+												className="px-3 py-1 rounded-lg text-sm font-semibold text-white"
+												style={{ backgroundColor: scorecard.environmentalGrade.color }}
+											>
+												{scorecard.environmentalGrade.grade}
+											</div>
+											<span
+												className="px-3 py-1 rounded-lg text-sm font-semibold text-white"
+												style={{ backgroundColor: scorecard.environmentalRiskColor }}
+											>
+												{scorecard.environmentalRisk} Risk
+											</span>
+										</div>
+									</div>
+								</div>
+								<div className="w-full bg-gray-200 rounded-full h-2">
+									<div
+										className="h-2 rounded-full transition-all"
+										style={{
+											width: `${scorecard.environmentalScore}%`,
+											backgroundColor: scorecard.environmentalGrade.color,
+										}}
+									></div>
+								</div>
+							</div>
+
+							{/* Impact Explanation */}
+							<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+								<div className="flex items-start gap-2">
+									<AlertTriangle size={16} className="text-orange-500 mt-0.5 flex-shrink-0" />
+									<p className="text-sm text-gray-700">{scorecard.environmentalImpact}</p>
+								</div>
+							</div>
+
+							{/* Data Completeness */}
+							<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+								<h3 className="text-sm font-semibold text-gray-900 mb-3">Data Completeness: {scorecard.environmentalCompleteness}%</h3>
+								<div className="space-y-3">
+									{scorecard.environmentalCompleted.length > 0 && (
+										<div>
+											<div className="text-xs font-medium text-green-700 mb-2 flex items-center gap-1">
+												<CheckCircle2 size={12} />
+												Completed ({scorecard.environmentalCompleted.length})
+											</div>
+											<div className="flex flex-wrap gap-1.5">
+												{scorecard.environmentalCompleted.map((item, idx) => (
+													<span key={idx} className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+														{item}
+													</span>
+												))}
+											</div>
+										</div>
+									)}
+									{scorecard.environmentalMissingCritical.length > 0 && (
+										<div>
+											<div className="text-xs font-medium text-red-700 mb-2 flex items-center gap-1">
+												<XCircle size={12} />
+												Missing Critical ({scorecard.environmentalMissingCritical.length})
+											</div>
+											<div className="flex flex-wrap gap-1.5">
+												{scorecard.environmentalMissingCritical.map((item, idx) => (
+													<span key={idx} className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
+														{item}
+													</span>
+												))}
+											</div>
+										</div>
+									)}
+									{scorecard.environmentalMissing.filter(m => !scorecard.environmentalMissingCritical.includes(m)).length > 0 && (
+										<div>
+											<div className="text-xs font-medium text-yellow-700 mb-2 flex items-center gap-1">
+												<AlertTriangle size={12} />
+												Missing Optional ({scorecard.environmentalMissing.filter(m => !scorecard.environmentalMissingCritical.includes(m)).length})
+											</div>
+											<div className="flex flex-wrap gap-1.5">
+												{scorecard.environmentalMissing.filter(m => !scorecard.environmentalMissingCritical.includes(m)).map((item, idx) => (
+													<span key={idx} className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">
+														{item}
+													</span>
+												))}
+											</div>
+										</div>
+									)}
+								</div>
 							</div>
 						</div>
-						<div>
-							<div className="text-gray-600 mb-1">{t("esgScorecard.scoringMethod")}</div>
-							<div className="text-gray-900 font-medium">
-								{t("esgScorecard.weightedAverage")}
+					)}
+
+					{/* Tab 3: Social Score */}
+					{activeTab === "social" && (
+						<div className="space-y-4">
+							{/* Social Score Card */}
+							<div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg shadow-sm border border-blue-200 p-4">
+								<div className="flex items-center justify-between mb-3">
+									<div>
+										<h2 className="text-xs font-medium text-gray-700 mb-1">
+											{t("reports.social")} Score
+										</h2>
+										<div className="flex items-baseline gap-3">
+											<div className="text-4xl font-bold text-gray-900">
+												{scorecard.socialScore.toFixed(1)}
+											</div>
+											<div
+												className="px-3 py-1 rounded-lg text-sm font-semibold text-white"
+												style={{ backgroundColor: scorecard.socialGrade.color }}
+											>
+												{scorecard.socialGrade.grade}
+											</div>
+											<span
+												className="px-3 py-1 rounded-lg text-sm font-semibold text-white"
+												style={{ backgroundColor: scorecard.socialRiskColor }}
+											>
+												{scorecard.socialRisk} Risk
+											</span>
+										</div>
+									</div>
+								</div>
+								<div className="w-full bg-gray-200 rounded-full h-2">
+									<div
+										className="h-2 rounded-full transition-all"
+										style={{
+											width: `${scorecard.socialScore}%`,
+											backgroundColor: scorecard.socialGrade.color,
+										}}
+									></div>
+								</div>
+							</div>
+
+							{/* Impact Explanation */}
+							<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+								<div className="flex items-start gap-2">
+									<AlertTriangle size={16} className="text-orange-500 mt-0.5 flex-shrink-0" />
+									<p className="text-sm text-gray-700">{scorecard.socialImpact}</p>
+								</div>
+							</div>
+
+							{/* Data Completeness */}
+							<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+								<h3 className="text-sm font-semibold text-gray-900 mb-3">Data Completeness: {scorecard.socialCompleteness}%</h3>
+								<div className="space-y-3">
+									{scorecard.socialCompleted.length > 0 && (
+										<div>
+											<div className="text-xs font-medium text-green-700 mb-2 flex items-center gap-1">
+												<CheckCircle2 size={12} />
+												Completed ({scorecard.socialCompleted.length})
+											</div>
+											<div className="flex flex-wrap gap-1.5">
+												{scorecard.socialCompleted.map((item, idx) => (
+													<span key={idx} className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+														{item}
+													</span>
+												))}
+											</div>
+										</div>
+									)}
+									{scorecard.socialMissingCritical.length > 0 && (
+										<div>
+											<div className="text-xs font-medium text-red-700 mb-2 flex items-center gap-1">
+												<XCircle size={12} />
+												Missing Critical ({scorecard.socialMissingCritical.length})
+											</div>
+											<div className="flex flex-wrap gap-1.5">
+												{scorecard.socialMissingCritical.map((item, idx) => (
+													<span key={idx} className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
+														{item}
+													</span>
+												))}
+											</div>
+										</div>
+									)}
+									{scorecard.socialMissing.filter(m => !scorecard.socialMissingCritical.includes(m)).length > 0 && (
+										<div>
+											<div className="text-xs font-medium text-yellow-700 mb-2 flex items-center gap-1">
+												<AlertTriangle size={12} />
+												Missing Optional ({scorecard.socialMissing.filter(m => !scorecard.socialMissingCritical.includes(m)).length})
+											</div>
+											<div className="flex flex-wrap gap-1.5">
+												{scorecard.socialMissing.filter(m => !scorecard.socialMissingCritical.includes(m)).map((item, idx) => (
+													<span key={idx} className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">
+														{item}
+													</span>
+												))}
+											</div>
+										</div>
+									)}
+								</div>
 							</div>
 						</div>
-					</div>
-				</div>
+					)}
+
+					{/* Tab 4: Governance Score */}
+					{activeTab === "governance" && (
+						<div className="space-y-4">
+							{/* Governance Score Card */}
+							<div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg shadow-sm border border-purple-200 p-4">
+								<div className="flex items-center justify-between mb-3">
+									<div>
+										<h2 className="text-xs font-medium text-gray-700 mb-1">
+											{t("reports.governance")} Score
+										</h2>
+										<div className="flex items-baseline gap-3">
+											<div className="text-4xl font-bold text-gray-900">
+												{scorecard.governanceScore.toFixed(1)}
+											</div>
+											<div
+												className="px-3 py-1 rounded-lg text-sm font-semibold text-white"
+												style={{ backgroundColor: scorecard.governanceGrade.color }}
+											>
+												{scorecard.governanceGrade.grade}
+											</div>
+											<span
+												className="px-3 py-1 rounded-lg text-sm font-semibold text-white"
+												style={{ backgroundColor: scorecard.governanceRiskColor }}
+											>
+												{scorecard.governanceRisk} Risk
+											</span>
+										</div>
+									</div>
+								</div>
+								<div className="w-full bg-gray-200 rounded-full h-2">
+									<div
+										className="h-2 rounded-full transition-all"
+										style={{
+											width: `${scorecard.governanceScore}%`,
+											backgroundColor: scorecard.governanceGrade.color,
+										}}
+									></div>
+								</div>
+							</div>
+
+							{/* Impact Explanation */}
+							<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+								<div className="flex items-start gap-2">
+									<AlertTriangle size={16} className="text-orange-500 mt-0.5 flex-shrink-0" />
+									<p className="text-sm text-gray-700">{scorecard.governanceImpact}</p>
+								</div>
+							</div>
+
+							{/* Data Completeness */}
+							<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+								<h3 className="text-sm font-semibold text-gray-900 mb-3">Data Completeness: {scorecard.governanceCompleteness}%</h3>
+								<div className="space-y-3">
+									{scorecard.governanceCompleted.length > 0 && (
+										<div>
+											<div className="text-xs font-medium text-green-700 mb-2 flex items-center gap-1">
+												<CheckCircle2 size={12} />
+												Completed ({scorecard.governanceCompleted.length})
+											</div>
+											<div className="flex flex-wrap gap-1.5">
+												{scorecard.governanceCompleted.map((item, idx) => (
+													<span key={idx} className="px-2 py-1 bg-green-100 text-green-700 rounded text-xs">
+														{item}
+													</span>
+												))}
+											</div>
+										</div>
+									)}
+									{scorecard.governanceMissingCritical.length > 0 && (
+										<div>
+											<div className="text-xs font-medium text-red-700 mb-2 flex items-center gap-1">
+												<XCircle size={12} />
+												Missing Critical ({scorecard.governanceMissingCritical.length})
+											</div>
+											<div className="flex flex-wrap gap-1.5">
+												{scorecard.governanceMissingCritical.map((item, idx) => (
+													<span key={idx} className="px-2 py-1 bg-red-100 text-red-700 rounded text-xs">
+														{item}
+													</span>
+												))}
+											</div>
+										</div>
+									)}
+									{scorecard.governanceMissing.filter(m => !scorecard.governanceMissingCritical.includes(m)).length > 0 && (
+										<div>
+											<div className="text-xs font-medium text-yellow-700 mb-2 flex items-center gap-1">
+												<AlertTriangle size={12} />
+												Missing Optional ({scorecard.governanceMissing.filter(m => !scorecard.governanceMissingCritical.includes(m)).length})
+											</div>
+											<div className="flex flex-wrap gap-1.5">
+												{scorecard.governanceMissing.filter(m => !scorecard.governanceMissingCritical.includes(m)).map((item, idx) => (
+													<span key={idx} className="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs">
+														{item}
+													</span>
+												))}
+											</div>
+										</div>
+									)}
+								</div>
+							</div>
+						</div>
+					)}
+				</ETTabs>
 			</div>
 		</DashboardLayout>
 	);
