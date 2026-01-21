@@ -61,13 +61,18 @@ export default function AppBar({ user }: AppBarProps) {
 		// Fetch companies from store (with caching)
 		fetchCompanies();
 		// Plan is now company-specific
-		if (selectedCompany?.plan) {
-			setSelectedPlan(selectedCompany.plan);
-		}
-		if (selectedCompany?._id) {
+		// Check for admin test plan first (for testing), then use real company plan
+		if (selectedCompany?._id && typeof window !== "undefined") {
+			const testPlan = localStorage.getItem("admin_test_plan") as "starter" | "pro" | "enterprise" | null;
+			const testCompanyId = localStorage.getItem("admin_test_company_id");
+			if (testPlan && testCompanyId === selectedCompany._id && user?.role === "ADMIN") {
+				setSelectedPlan(testPlan);
+			} else if (selectedCompany?.plan) {
+				setSelectedPlan(selectedCompany.plan);
+			}
 			setSelectedCompanyId(selectedCompany._id);
 		}
-	}, [selectedCompany, fetchCompanies]);
+	}, [selectedCompany, fetchCompanies, user?.role]);
 
 	useEffect(() => {
 		// Close menus when clicking outside
@@ -101,29 +106,29 @@ export default function AppBar({ user }: AppBarProps) {
 		}
 	};
 
-	const handlePlanChange = async () => {
+	const handlePlanChange = async (plan: "starter" | "pro" | "enterprise") => {
 		if (!user || user.role !== "ADMIN" || !selectedCompany) return;
 		
-		try {
-			const { plansAPI } = await import("@/lib/api");
-			await plansAPI.updatePlan(selectedPlan, selectedCompany._id);
+		// Store test plan in localStorage (for testing only, doesn't affect real company plan)
+		if (typeof window !== "undefined") {
+			localStorage.setItem("admin_test_plan", plan);
+			localStorage.setItem("admin_test_company_id", selectedCompany._id);
 			
-			// Update company plan in store
+			// Update selectedPlan state
+			setSelectedPlan(plan);
+			
+			// Update selectedCompany in store temporarily (for UI only)
 			const { updateCompany } = useCompanyStore.getState();
-			updateCompany(selectedCompany._id, { plan: selectedPlan });
+			updateCompany(selectedCompany._id, { plan: plan });
 			
-			// Clear feature cache
-			if (typeof window !== "undefined") {
-				const { clearFeatureCache } = await import("@/lib/features");
-				clearFeatureCache();
-			}
+			// Clear feature cache to force refresh
+			const { clearFeatureCache } = await import("@/lib/features");
+			clearFeatureCache();
 			
-			showToast.success(`Company plan changed to ${selectedPlan.toUpperCase()}`);
+			showToast.success(`Test plan changed to ${plan.toUpperCase()} (testing only - doesn't affect real plan)`);
 			setShowPlanModal(false);
 			// Reload to reflect changes
 			window.location.reload();
-		} catch (error: any) {
-			showToast.error(error.response?.data?.error || "Failed to update plan");
 		}
 	};
 
@@ -230,7 +235,12 @@ export default function AppBar({ user }: AppBarProps) {
 							>
 								<CreditCard size={14} />
 								<div className="flex items-center gap-1.5">
-									<span className="font-medium text-gray-700">{selectedCompany?.plan?.toUpperCase() || "STARTER"}</span>
+									<span className="font-medium text-gray-700">
+										{selectedPlan.toUpperCase()}
+										{typeof window !== "undefined" && localStorage.getItem("admin_test_plan") && localStorage.getItem("admin_test_company_id") === selectedCompany?._id && (
+											<span className="ml-1 text-[10px] text-orange-600 font-normal">(TEST)</span>
+										)}
+									</span>
 									{trialStatus.isTrial && !trialStatus.isExpired && (
 										<span className="px-1.5 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-semibold rounded">
 											{trialStatus.daysRemaining}D TRIAL
@@ -242,12 +252,12 @@ export default function AppBar({ user }: AppBarProps) {
 							
 							{showPlanModal && (
 								<div className="absolute right-0 mt-2 w-64 bg-white rounded-lg border border-gray-200 shadow-xl z-50 p-3">
-									<div className="text-xs font-semibold text-gray-900 mb-3 px-2">Select Plan</div>
+									<div className="text-xs font-semibold text-gray-900 mb-1 px-2">Select Plan (Testing Only)</div>
+									<div className="text-[10px] text-orange-600 mb-3 px-2 italic">Changes don't affect real company plan</div>
 									<div className="space-y-2">
 										<button
 											onClick={() => {
-												setSelectedPlan("starter");
-												handlePlanChange();
+												handlePlanChange("starter");
 											}}
 											className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all ${
 												selectedPlan === "starter" || selectedCompany?.plan === "starter"
@@ -269,8 +279,7 @@ export default function AppBar({ user }: AppBarProps) {
 										</button>
 										<button
 											onClick={() => {
-												setSelectedPlan("pro");
-												handlePlanChange();
+												handlePlanChange("pro");
 											}}
 											className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all ${
 												selectedPlan === "pro" || selectedCompany?.plan === "pro"
@@ -295,8 +304,7 @@ export default function AppBar({ user }: AppBarProps) {
 										</button>
 										<button
 											onClick={() => {
-												setSelectedPlan("enterprise");
-												handlePlanChange();
+												handlePlanChange("enterprise");
 											}}
 											className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all ${
 												selectedPlan === "enterprise" || selectedCompany?.plan === "enterprise"

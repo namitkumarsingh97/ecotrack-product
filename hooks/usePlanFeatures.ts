@@ -131,8 +131,21 @@ export const usePlanFeatures = () => {
 	const { selectedCompany } = useCompanyStore();
 	const trialStatus = useTrialStatus();
 	
+	// Check for admin test mode (for testing features without affecting real company plan)
+	const testPlan = useMemo(() => {
+		if (typeof window === "undefined") return null;
+		const storedTestPlan = localStorage.getItem("admin_test_plan") as "starter" | "pro" | "enterprise" | null;
+		const storedTestCompanyId = localStorage.getItem("admin_test_company_id");
+		// Only use test plan if it's for the currently selected company
+		if (storedTestPlan && storedTestCompanyId === selectedCompany?._id) {
+			return storedTestPlan;
+		}
+		return null;
+	}, [selectedCompany?._id]);
+	
 	// Plan is now company-specific, not user-specific
-	const plan = (selectedCompany?.plan || "starter") as "starter" | "pro" | "enterprise";
+	// Use test plan if available (for admin testing), otherwise use real company plan
+	const plan = (testPlan || selectedCompany?.plan || "starter") as "starter" | "pro" | "enterprise";
 	const features = useMemo(() => PLAN_FEATURES[plan], [plan]);
 	
 	// If on trial and trial expired, downgrade to Starter features
