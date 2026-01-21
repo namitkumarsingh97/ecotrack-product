@@ -16,6 +16,32 @@ export default function SocialFormTabs({
 	const { t } = useTranslation();
 	const [activeTab, setActiveTab] = useState("demographics");
 
+	// Count required fields in each tab
+	const getRequiredFieldsCount = (tabKey: string): number => {
+		switch (tabKey) {
+			case "demographics":
+				// Required: totalEmployeesPermanent, totalEmployeesContractual, femalePercentWorkforce
+				return 3;
+			case "safety":
+				// Required: accidentIncidents, totalTrainingHoursPerEmployee
+				return 2;
+			case "labor":
+				// No required fields
+				return 0;
+			case "rights":
+				// No required fields
+				return 0;
+			case "community":
+				// No required fields
+				return 0;
+			case "stakeholder":
+				// No required fields
+				return 0;
+			default:
+				return 0;
+		}
+	};
+
 	const tabs: Tab[] = [
 		{ key: "demographics", label: t("social.tabs.workforceDemographics") || "Workforce Demographics" },
 		{ key: "safety", label: t("social.tabs.employeeSafety") || "Employee Safety & Welfare" },
@@ -30,6 +56,14 @@ export default function SocialFormTabs({
 			{/* Tab 1: Workforce Demographics */}
 			{activeTab === "demographics" && (
 				<div className="space-y-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("social.tabs.workforceDemographics") || "Workforce Demographics"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("demographics")}
+						</span>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div>
 							<label className="block text-xs font-medium text-gray-700 mb-1">
@@ -123,6 +157,14 @@ export default function SocialFormTabs({
 			{/* Tab 2: Employee Safety & Welfare */}
 			{activeTab === "safety" && (
 				<div className="space-y-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("social.tabs.employeeSafety") || "Employee Safety & Welfare"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("safety")}
+						</span>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div>
 							<label className="block text-xs font-medium text-gray-700 mb-1">
@@ -227,6 +269,14 @@ export default function SocialFormTabs({
 			{/* Tab 3: Labor Practices & Compensation */}
 			{activeTab === "labor" && (
 				<div className="space-y-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("social.tabs.laborPractices") || "Labor Practices & Compensation"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("labor")}
+						</span>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div className="md:col-span-2">
 							<label className="flex items-center gap-2">
@@ -316,6 +366,14 @@ export default function SocialFormTabs({
 			{/* Tab 4: Human Rights & Inclusivity */}
 			{activeTab === "rights" && (
 				<div className="space-y-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("social.tabs.humanRights") || "Human Rights & Inclusivity"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("rights")}
+						</span>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div className="md:col-span-2">
 							<label className="block text-xs font-medium text-gray-700 mb-1">
@@ -404,6 +462,14 @@ export default function SocialFormTabs({
 			{/* Tab 5: Community & CSR */}
 			{activeTab === "community" && (
 				<div className="space-y-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("social.tabs.communityCSR") || "Community & CSR"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("community")}
+						</span>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div>
 							<label className="block text-xs font-medium text-gray-700 mb-1">
@@ -491,6 +557,14 @@ export default function SocialFormTabs({
 			{/* Tab 6: Stakeholder Engagement */}
 			{activeTab === "stakeholder" && (
 				<div className="space-y-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("social.tabs.stakeholderEngagement") || "Stakeholder Engagement"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("stakeholder")}
+						</span>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div className="md:col-span-2">
 							<label className="block text-xs font-medium text-gray-700 mb-1">

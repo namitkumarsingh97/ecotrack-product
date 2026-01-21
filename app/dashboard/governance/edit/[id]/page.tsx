@@ -55,6 +55,8 @@ export default function EditGovernancePage() {
 	});
 	const [loading, setLoading] = useState(false);
 	const [metricLoading, setMetricLoading] = useState(true);
+	const [periods, setPeriods] = useState<string[]>([]);
+	const [loadingPeriods, setLoadingPeriods] = useState(false);
 
 	useEffect(() => {
 		fetchCompanies();
@@ -66,48 +68,102 @@ export default function EditGovernancePage() {
 		}
 	}, [params.id]);
 
+	useEffect(() => {
+		const loadPeriods = async () => {
+			setLoadingPeriods(true);
+			try {
+				const response = await metricsAPI.getPeriods();
+				const loadedPeriods = response.data.periods || [];
+				
+				// If formData.period exists and is not in the list, add it
+				if (formData.period && !loadedPeriods.includes(formData.period)) {
+					loadedPeriods.push(formData.period);
+					loadedPeriods.sort().reverse(); // Sort descending
+				}
+				
+				setPeriods(loadedPeriods);
+			} catch (error: any) {
+				console.error('Failed to load periods:', error);
+				showToast.error("Failed to load periods");
+			} finally {
+				setLoadingPeriods(false);
+			}
+		};
+		loadPeriods();
+	}, [formData.period]);
+
 	const loadMetric = async (id: string) => {
 		try {
 			setMetricLoading(true);
 			const response = await metricsAPI.getGovernanceById(id);
 			const metric = response.data.metric;
 
+			if (!metric) {
+				showToast.error("Metric not found");
+				router.push("/dashboard/governance");
+				return;
+			}
+
+			// Helper function to safely convert number to string
+			const numToString = (value: any): string => {
+				if (value === null || value === undefined) return "";
+				if (typeof value === "number") return value.toString();
+				return String(value);
+			};
+
+			// Helper function to safely convert ObjectId to string
+			const idToString = (value: any): string => {
+				if (!value) return "";
+				if (typeof value === "object" && value.toString) return value.toString();
+				return String(value);
+			};
+
+			const periodValue = metric.period || "";
+			
+			// Ensure the period from backend is in the periods list
+			if (periodValue && !periods.includes(periodValue)) {
+				setPeriods((prev) => {
+					const updated = [...prev, periodValue];
+					return updated.sort().reverse(); // Sort descending
+				});
+			}
+
 			setFormData({
-				period: metric.period || "",
-				companyId: metric.companyId || "",
+				period: periodValue,
+				companyId: idToString(metric.companyId),
 				// Tab 1
-				boardMembers: metric.boardMembers?.toString() || "",
-				independentDirectors: metric.independentDirectors?.toString() || "",
-				boardDiversityPercent: metric.boardDiversityPercent?.toString() || "",
-				esgCommitteeExists: metric.esgCommitteeExists || false,
+				boardMembers: numToString(metric.boardMembers),
+				independentDirectors: numToString(metric.independentDirectors),
+				boardDiversityPercent: numToString(metric.boardDiversityPercent),
+				esgCommitteeExists: Boolean(metric.esgCommitteeExists),
 				esgCommitteeStructure: metric.esgCommitteeStructure || "",
 				boardEsgDiscussionFrequency: metric.boardEsgDiscussionFrequency || "",
 				// Tab 2
-				codeOfConductExists: metric.codeOfConductExists || false,
+				codeOfConductExists: Boolean(metric.codeOfConductExists),
 				codeOfConductDetails: metric.codeOfConductDetails || "",
-				antiCorruptionPolicy: metric.antiCorruptionPolicy || false,
+				antiCorruptionPolicy: Boolean(metric.antiCorruptionPolicy),
 				antiCorruptionPolicyDetails: metric.antiCorruptionPolicyDetails || "",
-				whistleblowerPolicyExists: metric.whistleblowerPolicyExists || false,
+				whistleblowerPolicyExists: Boolean(metric.whistleblowerPolicyExists),
 				whistleblowerPolicyDetails: metric.whistleblowerPolicyDetails || "",
 				// Tab 3
 				identifiedEsgRisks: metric.identifiedEsgRisks || "",
 				riskMitigationPlans: metric.riskMitigationPlans || "",
 				monitoringEscalationMechanisms: metric.monitoringEscalationMechanisms || "",
-				complianceViolations: metric.complianceViolations?.toString() || "",
+				complianceViolations: numToString(metric.complianceViolations),
 				auditResults: metric.auditResults || "",
 				// Tab 4
-				materialEsgRisksDisclosed: metric.materialEsgRisksDisclosed || false,
+				materialEsgRisksDisclosed: Boolean(metric.materialEsgRisksDisclosed),
 				materialEsgRisksDetails: metric.materialEsgRisksDetails || "",
 				reportingGovernancePolicies: metric.reportingGovernancePolicies || "",
-				thirdPartyAuditExists: metric.thirdPartyAuditExists || false,
+				thirdPartyAuditExists: Boolean(metric.thirdPartyAuditExists),
 				thirdPartyAuditDetails: metric.thirdPartyAuditDetails || "",
 				// Tab 5
-				supplierEsgGuidelinesExists: metric.supplierEsgGuidelinesExists || false,
+				supplierEsgGuidelinesExists: Boolean(metric.supplierEsgGuidelinesExists),
 				supplierEsgGuidelinesDetails: metric.supplierEsgGuidelinesDetails || "",
 				fairBusinessPractices: metric.fairBusinessPractices || "",
 				contractualGovernanceClauses: metric.contractualGovernanceClauses || "",
 				// Legacy
-				dataPrivacyPolicy: metric.dataPrivacyPolicy || false,
+				dataPrivacyPolicy: Boolean(metric.dataPrivacyPolicy),
 			});
 		} catch (error: any) {
 			showToast.error(error.response?.data?.error || "Failed to load metric");
@@ -185,8 +241,8 @@ export default function EditGovernancePage() {
 	if (metricLoading) {
 		return (
 			<DashboardLayout>
-				<div className="text-center py-12">
-					<div className="text-xs text-gray-500">Loading...</div>
+				<div className="flex items-center justify-center h-64">
+					<div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600"></div>
 				</div>
 			</DashboardLayout>
 		);
@@ -208,7 +264,7 @@ export default function EditGovernancePage() {
 
 	return (
 		<DashboardLayout>
-			<div className="max-w-6xl mx-auto">
+			<div className="px-4 md:px-6 lg:px-8">
 				<div className="mb-4">
 					<Link
 						href="/dashboard/governance"
@@ -217,10 +273,45 @@ export default function EditGovernancePage() {
 						<ArrowLeft size={14} />
 						{t("common.back")} {t("governance.title")}
 					</Link>
-					<div className="flex items-center justify-between">
-						<div>
-							<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("governance.editMetric")}</h1>
-							<p className="text-xs text-gray-600">{t("governance.updateMetrics")}</p>
+					<div className="flex items-center justify-between mb-2">
+						<div className="flex items-center gap-4 flex-1">
+							<div>
+								<h1 className="text-lg font-semibold text-gray-900 mb-0.5">{t("governance.editMetric")}</h1>
+								<p className="text-xs text-gray-600">{t("governance.updateMetrics")}</p>
+							</div>
+							{/* Period Selection */}
+							<div className="flex flex-col">
+								<label className="block text-xs font-medium text-gray-700 mb-1">
+									{t("dashboard.period")} *
+								</label>
+								<select
+									required
+									value={formData.period || ""}
+									onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+									disabled={loadingPeriods || metricLoading}
+									className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+								>
+									{loadingPeriods || metricLoading ? (
+										<option value="">{t("common.loading")}...</option>
+									) : periods.length > 0 ? (
+										<>
+											{!formData.period && <option value="">Select period</option>}
+											{periods.map((period) => (
+												<option key={period} value={period}>
+													{period}
+												</option>
+											))}
+											{formData.period && !periods.includes(formData.period) && (
+												<option value={formData.period}>{formData.period}</option>
+											)}
+										</>
+									) : formData.period ? (
+										<option value={formData.period}>{formData.period}</option>
+									) : (
+										<option value="">No periods available</option>
+									)}
+								</select>
+							</div>
 						</div>
 						<div className="flex gap-2">
 							<Link
@@ -249,23 +340,6 @@ export default function EditGovernancePage() {
 
 				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
 					<form onSubmit={handleSubmit} className="space-y-4">
-						{/* Period Selection */}
-						<div className="pb-4 border-b border-gray-200">
-							<div>
-								<label className="block text-xs font-medium text-gray-700 mb-1">
-									{t("dashboard.period")} *
-								</label>
-								<input
-									type="text"
-									required
-									value={formData.period}
-									onChange={(e) => setFormData({ ...formData, period: e.target.value })}
-									className="w-full md:w-auto px-3 py-1.5 text-xs border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
-									placeholder="2026-Q1"
-								/>
-								<p className="text-xs text-gray-500 mt-0.5">{t("governance.periodFormat") || "Format: YYYY-QN (e.g., 2026-Q1)"}</p>
-							</div>
-						</div>
 
 						{/* Tab Form Component */}
 						<GovernanceFormTabs

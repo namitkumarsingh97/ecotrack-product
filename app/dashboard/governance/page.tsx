@@ -17,6 +17,8 @@ interface GovernanceMetric {
   period: string;
   boardMembers?: number;
   independentDirectors?: number;
+  boardDiversityPercent?: number;
+  esgCommitteeExists?: boolean;
   antiCorruptionPolicy?: boolean;
   dataPrivacyPolicy?: boolean;
   complianceViolations?: number;
@@ -31,6 +33,8 @@ export default function GovernancePage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPeriod, setFilterPeriod] = useState("all");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [periods, setPeriods] = useState<string[]>([]);
+  const [loadingPeriods, setLoadingPeriods] = useState(false);
 
   // Use stores
   const { companies, selectedCompany, fetchCompanies } = useCompanyStore();
@@ -38,6 +42,8 @@ export default function GovernancePage() {
     governance: governanceMetricsMap,
     fetchGovernance,
     deleteGovernance,
+    clearCompanyCache,
+    setGovernance,
     isLoading: metricsLoading,
   } = useMetricsStore();
 
@@ -66,6 +72,44 @@ export default function GovernancePage() {
     }
   }, [selectedCompanyId, fetchGovernance]);
 
+  useEffect(() => {
+    // Load periods from backend
+    const loadPeriods = async () => {
+      setLoadingPeriods(true);
+      try {
+        const response = await metricsAPI.getPeriods();
+        const backendPeriods = response.data.periods || [];
+        
+        // Get unique periods from actual metrics
+        const metricPeriods = Array.from(new Set(metrics.map((m) => m.period)));
+        
+        // Combine and deduplicate, prioritizing backend periods order
+        const allPeriods = [...backendPeriods];
+        metricPeriods.forEach((period) => {
+          if (!allPeriods.includes(period)) {
+            allPeriods.push(period);
+          }
+        });
+        
+        // Sort descending (newest first)
+        allPeriods.sort().reverse();
+        
+        setPeriods(allPeriods);
+      } catch (error: any) {
+        console.error('Failed to load periods:', error);
+        // Fallback to periods from metrics if backend fails
+        const metricPeriods = Array.from(new Set(metrics.map((m) => m.period)))
+          .sort()
+          .reverse();
+        setPeriods(metricPeriods);
+      } finally {
+        setLoadingPeriods(false);
+      }
+    };
+    
+    loadPeriods();
+  }, [metrics]);
+
   const handleDelete = async (id: string) => {
     if (!confirm(t("governance.deleteConfirm"))) return;
 
@@ -82,8 +126,31 @@ export default function GovernancePage() {
     }
   };
 
-  // Get unique periods for chips
-  const periods = Array.from(new Set(metrics.map((m) => m.period)))
+  const handleRefresh = async () => {
+    if (!selectedCompanyId) return;
+    
+    try {
+      // Clear cache for this company to force fresh fetch
+      clearCompanyCache(selectedCompanyId);
+      
+      // Fetch fresh data directly from server, bypassing cache
+      setActionLoading("refresh");
+      const response = await metricsAPI.getGovernance(selectedCompanyId);
+      const metrics = response.data.metrics || response.data.governance || [];
+      
+      // Update store with fresh data from server
+      setGovernance(selectedCompanyId, metrics);
+      
+      showToast.success(t("governance.refreshSuccess") || "Data refreshed successfully");
+    } catch (error: any) {
+      showToast.error(error.response?.data?.error || "Failed to refresh data");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Get unique periods from metrics (for display purposes)
+  const metricPeriods = Array.from(new Set(metrics.map((m) => m.period)))
     .sort()
     .reverse();
 
@@ -111,13 +178,18 @@ export default function GovernancePage() {
       sortable: true,
     },
     {
-      label: t("governance.antiCorruptionPolicy"),
-      field: "antiCorruptionPolicy",
+      label: "Board Diversity %",
+      field: "boardDiversityPercent",
       sortable: true,
     },
     {
-      label: t("governance.dataPrivacyPolicy"),
-      field: "dataPrivacyPolicy",
+      label: "ESG Committee",
+      field: "esgCommitteeExists",
+      sortable: true,
+    },
+    {
+      label: t("governance.antiCorruptionPolicy"),
+      field: "antiCorruptionPolicy",
       sortable: true,
     },
     {
@@ -170,8 +242,12 @@ export default function GovernancePage() {
       metric.independentDirectors != null
         ? metric.independentDirectors.toLocaleString()
         : "0",
+    boardDiversityPercent:
+      metric.boardDiversityPercent != null
+        ? `${metric.boardDiversityPercent.toFixed(1)}%`
+        : "0%",
+    esgCommitteeExists: metric.esgCommitteeExists ? "Yes" : "No",
     antiCorruptionPolicy: metric.antiCorruptionPolicy ? "Yes" : "No",
-    dataPrivacyPolicy: metric.dataPrivacyPolicy ? "Yes" : "No",
     complianceViolations:
       metric.complianceViolations != null
         ? metric.complianceViolations.toLocaleString()
@@ -216,51 +292,48 @@ export default function GovernancePage() {
           </Link>
         </div>
 
-        {/* Period Chips - At Top */}
-        {periods.length > 0 && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                onClick={() => setFilterPeriod("all")}
-                className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                  filterPeriod === "all"
-                    ? "bg-green-600 text-white"
-                    : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                }`}
-              >
-                {t("dashboard.allPeriods")}
-              </button>
-              {periods.slice(0, 3).map((period) => (
-                <button
-                  key={period}
-                  onClick={() => setFilterPeriod(period)}
-                  className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                    filterPeriod === period
-                      ? "bg-green-600 text-white"
-                      : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                  }`}
-                >
-                  {period}
-                </button>
-              ))}
-              {periods.length > 3 && (
-                <span className="text-xs text-gray-500 px-2">
-                  +{periods.length - 3} more
-                </span>
+        {/* Period Filter Dropdown */}
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-2">
+          <div className="flex items-center gap-3">
+            <label className="text-xs font-medium text-gray-700 whitespace-nowrap">
+              {t("dashboard.period")}:
+            </label>
+            <select
+              value={filterPeriod}
+              onChange={(e) => setFilterPeriod(e.target.value)}
+              disabled={loadingPeriods}
+              className="flex-1 max-w-xs px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+            >
+              <option value="all">{t("dashboard.allPeriods")}</option>
+              {loadingPeriods ? (
+                <option value="" disabled>{t("common.loading")}...</option>
+              ) : periods.length > 0 ? (
+                periods.map((period) => (
+                  <option key={period} value={period}>
+                    {period}
+                  </option>
+                ))
+              ) : (
+                metricPeriods.map((period) => (
+                  <option key={period} value={period}>
+                    {period}
+                  </option>
+                ))
               )}
-            </div>
+            </select>
           </div>
-        )}
+        </div>
 
         {/* Metrics Table */}
         <ETTable
           columns={tableColumns}
           rows={tableRows}
           loading={loading}
-          title={t("governance.title")}
+          title={`${t("governance.title")} (${filteredMetrics.length})`}
           showSearch={true}
           showDownloadBtn={true}
-          showRefreshBtn={false}
+          showRefreshBtn={true}
+          onRefresh={handleRefresh}
           showSettingsBtn={false}
           disableDownload={filteredMetrics.length === 0}
           placeholder={t("common.search") + " by period..."}
@@ -270,17 +343,19 @@ export default function GovernancePage() {
             period: t("dashboard.period"),
             boardMembers: t("governance.boardMembers"),
             independentDirectors: t("governance.independentDirectors"),
+            boardDiversityPercent: "Board Diversity %",
+            esgCommitteeExists: "ESG Committee",
             antiCorruptionPolicy: t("governance.antiCorruptionPolicy"),
-            dataPrivacyPolicy: t("governance.dataPrivacyPolicy"),
             complianceViolations: t("governance.complianceViolations"),
           }}
           excelRows={filteredMetrics.map((metric) => ({
             period: metric.period,
-            boardMembers: metric.boardMembers,
-            independentDirectors: metric.independentDirectors,
+            boardMembers: metric.boardMembers ?? 0,
+            independentDirectors: metric.independentDirectors ?? 0,
+            boardDiversityPercent: metric.boardDiversityPercent ?? 0,
+            esgCommitteeExists: metric.esgCommitteeExists ? "Yes" : "No",
             antiCorruptionPolicy: metric.antiCorruptionPolicy ? "Yes" : "No",
-            dataPrivacyPolicy: metric.dataPrivacyPolicy ? "Yes" : "No",
-            complianceViolations: metric.complianceViolations,
+            complianceViolations: metric.complianceViolations ?? 0,
           }))}
           emptyText={t("governance.noMetrics")}
           totalRecords={filteredMetrics.length}

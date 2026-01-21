@@ -15,12 +15,21 @@ interface EnvironmentalMetric {
   _id: string;
   companyId: string;
   period: string;
-  electricityUsageKwh: number;
-  fuelConsumptionLitres: number;
-  waterUsageKL: number;
-  wasteGeneratedKg: number;
-  renewableEnergyPercent: number;
-  carbonEmissionsTons: number;
+  // New fields
+  totalEnergyConsumption?: number;
+  electricityKwh?: number;
+  fuelLitres?: number;
+  totalWasteTonnes?: number;
+  scope1Emissions?: number;
+  scope2Emissions?: number;
+  scope3Emissions?: number;
+  // Legacy fields
+  electricityUsageKwh?: number;
+  fuelConsumptionLitres?: number;
+  waterUsageKL?: number;
+  wasteGeneratedKg?: number;
+  renewableEnergyPercent?: number;
+  carbonEmissionsTons?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -167,33 +176,38 @@ export default function EnvironmentPage() {
   const tableColumns = [
     { label: t("dashboard.period"), field: "period", sortable: true },
     {
-      label: t("environment.electricityUsage"),
-      field: "electricityUsageKwh",
+      label: "Total Energy (kWh)",
+      field: "totalEnergyConsumption",
       sortable: true,
     },
     {
-      label: t("environment.fuelConsumption"),
-      field: "fuelConsumptionLitres",
+      label: "Electricity (kWh)",
+      field: "electricityKwh",
       sortable: true,
     },
     {
-      label: t("environment.waterUsage"),
+      label: "Fuel (L)",
+      field: "fuelLitres",
+      sortable: true,
+    },
+    {
+      label: "Water Usage (KL)",
       field: "waterUsageKL",
       sortable: true,
     },
     {
-      label: t("environment.wasteGenerated"),
-      field: "wasteGeneratedKg",
+      label: "Total Waste (tonnes)",
+      field: "totalWasteTonnes",
       sortable: true,
     },
     {
-      label: t("environment.renewableEnergy"),
+      label: "Renewable Energy %",
       field: "renewableEnergyPercent",
       sortable: true,
     },
     {
-      label: t("environment.carbonEmissions"),
-      field: "carbonEmissionsTons",
+      label: "Scope 1 Emissions",
+      field: "scope1Emissions",
       sortable: true,
     },
     {
@@ -236,26 +250,38 @@ export default function EnvironmentPage() {
   const tableRows = filteredMetrics.map((metric) => ({
     _id: metric._id,
     period: metric.period,
-    electricityUsageKwh:
-      metric.electricityUsageKwh != null
+    totalEnergyConsumption:
+      metric.totalEnergyConsumption != null
+        ? metric.totalEnergyConsumption.toLocaleString()
+        : "0",
+    electricityKwh:
+      metric.electricityKwh != null
+        ? metric.electricityKwh.toLocaleString()
+        : metric.electricityUsageKwh != null
         ? metric.electricityUsageKwh.toLocaleString()
         : "0",
-    fuelConsumptionLitres:
-      metric.fuelConsumptionLitres != null
+    fuelLitres:
+      metric.fuelLitres != null
+        ? metric.fuelLitres.toLocaleString()
+        : metric.fuelConsumptionLitres != null
         ? metric.fuelConsumptionLitres.toLocaleString()
         : "0",
     waterUsageKL:
       metric.waterUsageKL != null ? metric.waterUsageKL.toLocaleString() : "0",
-    wasteGeneratedKg:
-      metric.wasteGeneratedKg != null
-        ? metric.wasteGeneratedKg.toLocaleString()
+    totalWasteTonnes:
+      metric.totalWasteTonnes != null
+        ? metric.totalWasteTonnes.toLocaleString()
+        : metric.wasteGeneratedKg != null
+        ? (metric.wasteGeneratedKg / 1000).toLocaleString()
         : "0",
     renewableEnergyPercent:
       metric.renewableEnergyPercent != null
         ? `${metric.renewableEnergyPercent.toFixed(1)}%`
         : "0%",
-    carbonEmissionsTons:
-      metric.carbonEmissionsTons != null
+    scope1Emissions:
+      metric.scope1Emissions != null
+        ? metric.scope1Emissions.toLocaleString()
+        : metric.carbonEmissionsTons != null
         ? metric.carbonEmissionsTons.toLocaleString()
         : "0",
     actions: { _id: metric._id },
@@ -385,21 +411,23 @@ export default function EnvironmentPage() {
           onRefresh={handleRefresh}
           excelColumns={{
             period: t("dashboard.period"),
-            electricityUsageKwh: t("environment.electricityUsage"),
-            fuelConsumptionLitres: t("environment.fuelConsumption"),
-            waterUsageKL: t("environment.waterUsage"),
-            wasteGeneratedKg: t("environment.wasteGenerated"),
-            renewableEnergyPercent: t("environment.renewableEnergy"),
-            carbonEmissionsTons: t("environment.carbonEmissions"),
+            totalEnergyConsumption: "Total Energy (kWh)",
+            electricityKwh: "Electricity (kWh)",
+            fuelLitres: "Fuel (L)",
+            waterUsageKL: "Water Usage (KL)",
+            totalWasteTonnes: "Total Waste (tonnes)",
+            renewableEnergyPercent: "Renewable Energy %",
+            scope1Emissions: "Scope 1 Emissions",
           }}
           excelRows={filteredMetrics.map((metric) => ({
             period: metric.period,
-            electricityUsageKwh: metric.electricityUsageKwh,
-            fuelConsumptionLitres: metric.fuelConsumptionLitres,
-            waterUsageKL: metric.waterUsageKL,
-            wasteGeneratedKg: metric.wasteGeneratedKg,
-            renewableEnergyPercent: metric.renewableEnergyPercent,
-            carbonEmissionsTons: metric.carbonEmissionsTons,
+            totalEnergyConsumption: metric.totalEnergyConsumption ?? 0,
+            electricityKwh: metric.electricityKwh ?? metric.electricityUsageKwh ?? 0,
+            fuelLitres: metric.fuelLitres ?? metric.fuelConsumptionLitres ?? 0,
+            waterUsageKL: metric.waterUsageKL ?? 0,
+            totalWasteTonnes: metric.totalWasteTonnes ?? (metric.wasteGeneratedKg ? metric.wasteGeneratedKg / 1000 : 0),
+            renewableEnergyPercent: metric.renewableEnergyPercent ?? 0,
+            scope1Emissions: metric.scope1Emissions ?? metric.carbonEmissionsTons ?? 0,
           }))}
           emptyText={t("environment.noMetrics")}
           totalRecords={filteredMetrics.length}

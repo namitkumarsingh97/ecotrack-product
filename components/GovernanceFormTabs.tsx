@@ -16,6 +16,29 @@ export default function GovernanceFormTabs({
 	const { t } = useTranslation();
 	const [activeTab, setActiveTab] = useState("board");
 
+	// Count required fields in each tab
+	const getRequiredFieldsCount = (tabKey: string): number => {
+		switch (tabKey) {
+			case "board":
+				// Required: boardMembers, independentDirectors
+				return 2;
+			case "policies":
+				// No required fields
+				return 0;
+			case "risk":
+				// Required: complianceViolations
+				return 1;
+			case "transparency":
+				// No required fields
+				return 0;
+			case "supplier":
+				// No required fields
+				return 0;
+			default:
+				return 0;
+		}
+	};
+
 	const tabs: Tab[] = [
 		{ key: "board", label: t("governance.tabs.boardLeadership") || "Board & Leadership" },
 		{ key: "policies", label: t("governance.tabs.policiesEthics") || "Policies & Ethics" },
@@ -29,6 +52,14 @@ export default function GovernanceFormTabs({
 			{/* Tab 1: Board & Leadership */}
 			{activeTab === "board" && (
 				<div className="space-y-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("governance.tabs.boardLeadership") || "Board & Leadership"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("board")}
+						</span>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div>
 							<label className="block text-xs font-medium text-gray-700 mb-1">
@@ -136,6 +167,14 @@ export default function GovernanceFormTabs({
 			{/* Tab 2: Policies & Ethics */}
 			{activeTab === "policies" && (
 				<div className="space-y-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("governance.tabs.policiesEthics") || "Policies & Ethics"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("policies")}
+						</span>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div className="md:col-span-2">
 							<label className="flex items-center gap-2">
@@ -242,6 +281,14 @@ export default function GovernanceFormTabs({
 			{/* Tab 3: Risk Management */}
 			{activeTab === "risk" && (
 				<div className="space-y-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("governance.tabs.riskManagement") || "Risk Management"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("risk")}
+						</span>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div className="md:col-span-2">
 							<label className="block text-xs font-medium text-gray-700 mb-1">
@@ -326,6 +373,14 @@ export default function GovernanceFormTabs({
 			{/* Tab 4: Transparency & Reporting */}
 			{activeTab === "transparency" && (
 				<div className="space-y-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("governance.tabs.transparencyReporting") || "Transparency & Reporting"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("transparency")}
+						</span>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div className="md:col-span-2">
 							<label className="flex items-center gap-2">
@@ -414,6 +469,14 @@ export default function GovernanceFormTabs({
 			{/* Tab 5: Supplier & Customer Governance */}
 			{activeTab === "supplier" && (
 				<div className="space-y-3">
+					<div className="flex items-center justify-between mb-2">
+						<h3 className="text-sm font-semibold text-gray-900">
+							{t("governance.tabs.supplierCustomer") || "Supplier & Customer Governance"}
+						</h3>
+						<span className="text-xs font-semibold text-red-500">
+							Required Fields: {getRequiredFieldsCount("supplier")}
+						</span>
+					</div>
 					<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
 						<div className="md:col-span-2">
 							<label className="flex items-center gap-2">

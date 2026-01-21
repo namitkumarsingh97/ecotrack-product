@@ -63,7 +63,7 @@ export default function EditSocialPage() {
 		employeeTurnoverPercent: "",
 	});
 	const [loading, setLoading] = useState(false);
-	const [metricLoading, setMetricLoading] = useState(true);
+	const [loadingData, setLoadingData] = useState(true);
 	const [periods, setPeriods] = useState<string[]>([]);
 	const [loadingPeriods, setLoadingPeriods] = useState(false);
 
@@ -103,15 +103,19 @@ export default function EditSocialPage() {
 
 	const loadMetric = async (id: string) => {
 		try {
-			setMetricLoading(true);
+			setLoadingData(true);
 			const response = await metricsAPI.getSocialById(id);
-			const metric = response.data.metric;
+			// Handle both response.data.metric and response.data directly
+			const metric = response.data.metric || response.data;
 
 			if (!metric) {
 				showToast.error("Metric not found");
 				router.push("/dashboard/social");
 				return;
 			}
+
+			console.log("API Response:", response);
+			console.log("Loaded metric from backend:", metric);
 
 			// Helper function to safely convert number to string
 			const numToString = (value: any): string => {
@@ -130,14 +134,15 @@ export default function EditSocialPage() {
 			const periodValue = metric.period || "";
 			
 			// Ensure the period from backend is in the periods list
-			if (periodValue && !periods.includes(periodValue)) {
-				setPeriods((prev) => {
+			setPeriods((prev) => {
+				if (periodValue && !prev.includes(periodValue)) {
 					const updated = [...prev, periodValue];
 					return updated.sort().reverse(); // Sort descending
-				});
-			}
+				}
+				return prev;
+			});
 
-			setFormData({
+			const formDataToSet = {
 				period: periodValue,
 				companyId: idToString(metric.companyId),
 				// Tab 1
@@ -182,12 +187,16 @@ export default function EditSocialPage() {
 				avgTrainingHours: numToString(metric.avgTrainingHours),
 				workplaceIncidents: numToString(metric.workplaceIncidents),
 				employeeTurnoverPercent: numToString(metric.employeeTurnoverPercent),
-			});
+			};
+
+			console.log("Setting form data:", formDataToSet);
+			setFormData(formDataToSet);
 		} catch (error: any) {
+			console.error("Error loading metric:", error);
 			showToast.error(error.response?.data?.error || "Failed to load metric");
 			router.push("/dashboard/social");
 		} finally {
-			setMetricLoading(false);
+			setLoadingData(false);
 		}
 	};
 
@@ -266,7 +275,7 @@ export default function EditSocialPage() {
 		}
 	};
 
-	if (metricLoading) {
+	if (loadingData) {
 		return (
 			<DashboardLayout>
 				<div className="flex items-center justify-center h-64">
@@ -316,10 +325,10 @@ export default function EditSocialPage() {
 									required
 									value={formData.period || ""}
 									onChange={(e) => setFormData({ ...formData, period: e.target.value })}
-									disabled={loadingPeriods || metricLoading}
+									disabled={loadingPeriods || loadingData}
 									className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
 								>
-									{loadingPeriods || metricLoading ? (
+									{loadingPeriods || loadingData ? (
 										<option value="">{t("common.loading")}...</option>
 									) : periods.length > 0 ? (
 										<>
@@ -368,12 +377,14 @@ export default function EditSocialPage() {
 
 				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
 					<form onSubmit={handleSubmit} className="space-y-4">
-
 						{/* Tab Form Component */}
-						<SocialFormTabs
-							formData={formData}
-							setFormData={setFormData}
-						/>
+						{!loadingData && (
+							<SocialFormTabs
+								key={formData.period || "loading"}
+								formData={formData}
+								setFormData={setFormData}
+							/>
+						)}
 					</form>
 				</div>
 			</div>

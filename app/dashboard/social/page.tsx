@@ -15,6 +15,14 @@ interface SocialMetric {
   _id: string;
   companyId: string;
   period: string;
+  // New fields
+  totalEmployeesPermanent?: number;
+  totalEmployeesContractual?: number;
+  femalePercentWorkforce?: number;
+  totalTrainingHoursPerEmployee?: number;
+  accidentIncidents?: number;
+  csrSpend?: number;
+  // Legacy fields
   totalEmployees?: number;
   femaleEmployees?: number;
   avgTrainingHours?: number;
@@ -166,28 +174,33 @@ export default function SocialPage() {
   const tableColumns = [
     { label: t("dashboard.period"), field: "period", sortable: true },
     {
-      label: t("social.totalEmployees"),
-      field: "totalEmployees",
+      label: "Permanent Employees",
+      field: "totalEmployeesPermanent",
       sortable: true,
     },
     {
-      label: t("social.femaleEmployees"),
-      field: "femaleEmployees",
+      label: "Contractual Employees",
+      field: "totalEmployeesContractual",
       sortable: true,
     },
     {
-      label: t("social.avgTrainingHours"),
-      field: "avgTrainingHours",
+      label: "Female %",
+      field: "femalePercentWorkforce",
       sortable: true,
     },
     {
-      label: t("social.workplaceIncidents"),
-      field: "workplaceIncidents",
+      label: "Training Hours/Employee",
+      field: "totalTrainingHoursPerEmployee",
       sortable: true,
     },
     {
-      label: t("social.employeeTurnover"),
-      field: "employeeTurnoverPercent",
+      label: "Accident Incidents",
+      field: "accidentIncidents",
+      sortable: true,
+    },
+    {
+      label: "CSR Spend",
+      field: "csrSpend",
       sortable: true,
     },
     {
@@ -229,26 +242,38 @@ export default function SocialPage() {
   const tableRows = filteredMetrics.map((metric) => ({
     _id: metric._id,
     period: metric.period,
-    totalEmployees:
-      metric.totalEmployees != null
+    totalEmployeesPermanent:
+      metric.totalEmployeesPermanent != null
+        ? metric.totalEmployeesPermanent.toLocaleString()
+        : metric.totalEmployees != null
         ? metric.totalEmployees.toLocaleString()
         : "0",
-    femaleEmployees:
-      metric.femaleEmployees != null
-        ? metric.femaleEmployees.toLocaleString()
+    totalEmployeesContractual:
+      metric.totalEmployeesContractual != null
+        ? metric.totalEmployeesContractual.toLocaleString()
         : "0",
-    avgTrainingHours:
-      metric.avgTrainingHours != null
+    femalePercentWorkforce:
+      metric.femalePercentWorkforce != null
+        ? `${metric.femalePercentWorkforce.toFixed(1)}%`
+        : metric.femaleEmployees != null && metric.totalEmployees != null && metric.totalEmployees > 0
+        ? `${((metric.femaleEmployees / metric.totalEmployees) * 100).toFixed(1)}%`
+        : "0%",
+    totalTrainingHoursPerEmployee:
+      metric.totalTrainingHoursPerEmployee != null
+        ? metric.totalTrainingHoursPerEmployee.toFixed(1)
+        : metric.avgTrainingHours != null
         ? metric.avgTrainingHours.toFixed(1)
         : "0",
-    workplaceIncidents:
-      metric.workplaceIncidents != null
+    accidentIncidents:
+      metric.accidentIncidents != null
+        ? metric.accidentIncidents.toLocaleString()
+        : metric.workplaceIncidents != null
         ? metric.workplaceIncidents.toLocaleString()
         : "0",
-    employeeTurnoverPercent:
-      metric.employeeTurnoverPercent != null
-        ? `${metric.employeeTurnoverPercent.toFixed(1)}%`
-        : "0%",
+    csrSpend:
+      metric.csrSpend != null
+        ? metric.csrSpend.toLocaleString()
+        : "0",
     actions: { _id: metric._id },
   }));
 
@@ -338,19 +363,21 @@ export default function SocialPage() {
           downloadName={`social-metrics-${new Date().toISOString().split("T")[0]}`}
           excelColumns={{
             period: t("dashboard.period"),
-            totalEmployees: t("social.totalEmployees"),
-            femaleEmployees: t("social.femaleEmployees"),
-            avgTrainingHours: t("social.avgTrainingHours"),
-            workplaceIncidents: t("social.workplaceIncidents"),
-            employeeTurnoverPercent: t("social.employeeTurnover"),
+            totalEmployeesPermanent: "Permanent Employees",
+            totalEmployeesContractual: "Contractual Employees",
+            femalePercentWorkforce: "Female %",
+            totalTrainingHoursPerEmployee: "Training Hours/Employee",
+            accidentIncidents: "Accident Incidents",
+            csrSpend: "CSR Spend",
           }}
           excelRows={filteredMetrics.map((metric) => ({
             period: metric.period,
-            totalEmployees: metric.totalEmployees,
-            femaleEmployees: metric.femaleEmployees,
-            avgTrainingHours: metric.avgTrainingHours,
-            workplaceIncidents: metric.workplaceIncidents,
-            employeeTurnoverPercent: metric.employeeTurnoverPercent,
+            totalEmployeesPermanent: metric.totalEmployeesPermanent ?? metric.totalEmployees ?? 0,
+            totalEmployeesContractual: metric.totalEmployeesContractual ?? 0,
+            femalePercentWorkforce: metric.femalePercentWorkforce ?? (metric.femaleEmployees && metric.totalEmployees ? (metric.femaleEmployees / metric.totalEmployees) * 100 : 0),
+            totalTrainingHoursPerEmployee: metric.totalTrainingHoursPerEmployee ?? metric.avgTrainingHours ?? 0,
+            accidentIncidents: metric.accidentIncidents ?? metric.workplaceIncidents ?? 0,
+            csrSpend: metric.csrSpend ?? 0,
           }))}
           emptyText={t("social.noMetrics")}
           totalRecords={filteredMetrics.length}
