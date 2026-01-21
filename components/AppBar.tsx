@@ -56,13 +56,14 @@ export default function AppBar({ user }: AppBarProps) {
 	useEffect(() => {
 		// Fetch companies from store (with caching)
 		fetchCompanies();
-		if (user?.plan) {
-			setSelectedPlan(user.plan);
+		// Plan is now company-specific
+		if (selectedCompany?.plan) {
+			setSelectedPlan(selectedCompany.plan);
 		}
 		if (selectedCompany?._id) {
 			setSelectedCompanyId(selectedCompany._id);
 		}
-	}, [user, selectedCompany, fetchCompanies]);
+	}, [selectedCompany, fetchCompanies]);
 
 	useEffect(() => {
 		// Close menus when clicking outside
@@ -97,15 +98,15 @@ export default function AppBar({ user }: AppBarProps) {
 	};
 
 	const handlePlanChange = async () => {
-		if (!user || user.role !== "ADMIN") return;
+		if (!user || user.role !== "ADMIN" || !selectedCompany) return;
 		
 		try {
 			const { plansAPI } = await import("@/lib/api");
-			await plansAPI.updatePlan(selectedPlan);
+			await plansAPI.updatePlan(selectedPlan, selectedCompany._id);
 			
-			// Update user plan
-			const updatedUser = { ...user, plan: selectedPlan };
-			localStorage.setItem("user", JSON.stringify(updatedUser));
+			// Update company plan in store
+			const { updateCompany } = useCompanyStore.getState();
+			updateCompany(selectedCompany._id, { plan: selectedPlan });
 			
 			// Clear feature cache
 			if (typeof window !== "undefined") {
@@ -113,7 +114,7 @@ export default function AppBar({ user }: AppBarProps) {
 				clearFeatureCache();
 			}
 			
-			showToast.success(`Plan changed to ${selectedPlan.toUpperCase()}`);
+			showToast.success(`Company plan changed to ${selectedPlan.toUpperCase()}`);
 			setShowPlanModal(false);
 			// Reload to reflect changes
 			window.location.reload();
@@ -224,7 +225,7 @@ export default function AppBar({ user }: AppBarProps) {
 								className="flex items-center gap-1.5 px-3 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
 							>
 								<CreditCard size={14} />
-								<span className="font-medium text-gray-700">{user?.plan?.toUpperCase() || "STARTER"}</span>
+								<span className="font-medium text-gray-700">{selectedCompany?.plan?.toUpperCase() || "STARTER"}</span>
 								<ChevronDown size={12} />
 							</button>
 							
@@ -238,7 +239,7 @@ export default function AppBar({ user }: AppBarProps) {
 												handlePlanChange();
 											}}
 											className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all ${
-												selectedPlan === "starter" || user?.plan === "starter"
+												selectedPlan === "starter" || selectedCompany?.plan === "starter"
 													? "border-green-600 bg-green-50"
 													: "border-gray-200 hover:border-gray-300"
 											}`}
@@ -248,7 +249,7 @@ export default function AppBar({ user }: AppBarProps) {
 													<div className="text-xs font-semibold text-gray-900">Starter</div>
 													<div className="text-xs text-gray-600">₹1,999/month</div>
 												</div>
-												{(selectedPlan === "starter" || user?.plan === "starter") && (
+												{(selectedPlan === "starter" || selectedCompany?.plan === "starter") && (
 													<div className="w-4 h-4 bg-green-600 rounded-full flex items-center justify-center">
 														<div className="w-2 h-2 bg-white rounded-full"></div>
 													</div>
@@ -261,7 +262,7 @@ export default function AppBar({ user }: AppBarProps) {
 												handlePlanChange();
 											}}
 											className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all ${
-												selectedPlan === "pro" || user?.plan === "pro"
+												selectedPlan === "pro" || selectedCompany?.plan === "pro"
 													? "border-yellow-600 bg-yellow-50"
 													: "border-gray-200 hover:border-gray-300"
 											}`}
@@ -274,7 +275,7 @@ export default function AppBar({ user }: AppBarProps) {
 													</div>
 													<div className="text-xs text-gray-600">₹4,999/month</div>
 												</div>
-												{(selectedPlan === "pro" || user?.plan === "pro") && (
+												{(selectedPlan === "pro" || selectedCompany?.plan === "pro") && (
 													<div className="w-4 h-4 bg-yellow-600 rounded-full flex items-center justify-center">
 														<div className="w-2 h-2 bg-white rounded-full"></div>
 													</div>
@@ -287,7 +288,7 @@ export default function AppBar({ user }: AppBarProps) {
 												handlePlanChange();
 											}}
 											className={`w-full text-left px-3 py-2 rounded-lg border-2 transition-all ${
-												selectedPlan === "enterprise" || user?.plan === "enterprise"
+												selectedPlan === "enterprise" || selectedCompany?.plan === "enterprise"
 													? "border-purple-600 bg-purple-50"
 													: "border-gray-200 hover:border-gray-300"
 											}`}
@@ -297,7 +298,7 @@ export default function AppBar({ user }: AppBarProps) {
 													<div className="text-xs font-semibold text-gray-900">Enterprise</div>
 													<div className="text-xs text-gray-600">Custom pricing</div>
 												</div>
-												{(selectedPlan === "enterprise" || user?.plan === "enterprise") && (
+												{(selectedPlan === "enterprise" || selectedCompany?.plan === "enterprise") && (
 													<div className="w-4 h-4 bg-purple-600 rounded-full flex items-center justify-center">
 														<div className="w-2 h-2 bg-white rounded-full"></div>
 													</div>
@@ -340,7 +341,7 @@ export default function AppBar({ user }: AppBarProps) {
 									<p className="text-sm font-semibold text-gray-900">{user?.name || "User"}</p>
 									<p className="text-xs text-gray-500">{user?.email || ""}</p>
 									<span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
-										{user?.plan?.toUpperCase() || "STARTER"}
+										{selectedCompany?.plan?.toUpperCase() || "STARTER"}
 									</span>
 								</div>
 								{companies.length > 1 && (

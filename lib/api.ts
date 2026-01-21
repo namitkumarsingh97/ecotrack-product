@@ -167,7 +167,8 @@ export const tasksAPI = {
 export const plansAPI = {
 	getAll: () => api.get("/plans"),
 	getCurrent: () => api.get("/plans/current"),
-	updatePlan: (plan: "starter" | "pro" | "enterprise") => api.put("/plans/update", { plan }),
+	updatePlan: (plan: "starter" | "pro" | "enterprise", companyId?: string) => 
+		api.put("/plans/update", { plan, companyId }),
 };
 
 // ESG

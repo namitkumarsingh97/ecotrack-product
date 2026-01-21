@@ -147,7 +147,7 @@ export default function DashboardLayout({
 								<p className="text-xs font-medium text-gray-900">{user.name}</p>
 								<p className="text-xs text-gray-500">{user.email}</p>
 								<span className="inline-block mt-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
-									{user.plan?.toUpperCase() || "STARTER"}
+									{selectedCompany?.plan?.toUpperCase() || "STARTER"}
 								</span>
 							</>
 						)}

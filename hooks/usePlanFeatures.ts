@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useUserStore } from "@/stores";
+import { useCompanyStore } from "@/stores";
 
 export interface PlanFeatures {
 	// Dashboard & Tracking
@@ -127,9 +127,10 @@ const PLAN_FEATURES: Record<"starter" | "pro" | "enterprise", PlanFeatures> = {
 };
 
 export const usePlanFeatures = () => {
-	const { user } = useUserStore();
+	const { selectedCompany } = useCompanyStore();
 	
-	const plan = (user?.plan || "starter") as "starter" | "pro" | "enterprise";
+	// Plan is now company-specific, not user-specific
+	const plan = (selectedCompany?.plan || "starter") as "starter" | "pro" | "enterprise";
 	const features = useMemo(() => PLAN_FEATURES[plan], [plan]);
 	
 	const hasFeature = (feature: keyof PlanFeatures): boolean => {

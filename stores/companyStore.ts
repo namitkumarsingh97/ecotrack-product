@@ -16,6 +16,7 @@ interface Company {
 	annualRevenue: number;
 	location: string;
 	reportingYear: number;
+	plan?: 'starter' | 'pro' | 'enterprise'; // Subscription plan for this company (client)
 	customFeatures?: string[];
 	featureOverrides?: Record<string, boolean>;
 	createdAt?: string;
