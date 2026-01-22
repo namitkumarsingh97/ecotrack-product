@@ -83,13 +83,65 @@ export default function AlertsTasksPage() {
 		}
 	};
 
+	const [completingTaskId, setCompletingTaskId] = useState<string | null>(null);
+
 	const handleCompleteTask = async (taskId: string) => {
+		// Prevent multiple clicks
+		if (completingTaskId === taskId) return;
+		
+		setCompletingTaskId(taskId);
 		try {
-			await tasksAPI.updateStatus(taskId, "Completed");
-			showToast.success("Task marked as completed");
-			await loadDashboard();
+			const period = selectedPeriod === "latest" ? undefined : selectedPeriod;
+			const response = await tasksAPI.updateStatus(taskId, "Completed", period);
+			
+			// Log response for debugging
+			console.log("Task completion response:", response);
+			
+			// Explicitly check response status - axios should throw for 400+, but double-check
+			if (response && response.status >= 200 && response.status < 300) {
+				// Success - task was actually completed
+				showToast.success("Task marked as completed");
+				await loadDashboard();
+			} else {
+				// Unexpected status code
+				throw new Error(`Unexpected response status: ${response?.status}`);
+			}
 		} catch (error: any) {
-			showToast.error(error.response?.data?.error || "Failed to update task");
+			// Log error for debugging
+			console.error("Task completion error details:", {
+				error,
+				response: error.response,
+				status: error.response?.status,
+				data: error.response?.data
+			});
+			
+			// Check if it's an axios error with response (400, 500, etc.)
+			if (error.response) {
+				const status = error.response.status;
+				const errorMessage = error.response?.data?.error || "Failed to update task";
+				
+				// Validation error (400) - task cannot be completed
+				if (status === 400) {
+					showToast.error(errorMessage);
+					console.warn("Task completion validation failed:", errorMessage);
+					// Don't reload dashboard - task is still pending
+					return;
+				}
+				
+				// Other errors (404, 500, etc.)
+				showToast.error(errorMessage);
+				console.error("Task completion error:", error);
+			} else if (error.request) {
+				// Request was made but no response received
+				showToast.error("Network error. Please check your connection and try again.");
+				console.error("Network error:", error);
+			} else {
+				// Something else happened
+				showToast.error("Failed to update task. Please try again.");
+				console.error("Unexpected error:", error);
+			}
+		} finally {
+			setCompletingTaskId(null);
 		}
 	};
 
@@ -186,11 +238,23 @@ export default function AlertsTasksPage() {
 						{row.status !== "Completed" && (
 							<button
 								onClick={() => handleCompleteTask(row._id)}
-								className="flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700"
+								disabled={completingTaskId === row._id}
+								className={`flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded text-xs font-medium hover:bg-green-700 ${
+									completingTaskId === row._id ? "opacity-50 cursor-not-allowed" : ""
+								}`}
 								title="Mark as Completed"
 							>
-								<CheckCircle2 size={12} />
-								Complete
+								{completingTaskId === row._id ? (
+									<>
+										<div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+										Completing...
+									</>
+								) : (
+									<>
+										<CheckCircle2 size={12} />
+										Complete
+									</>
+								)}
 							</button>
 						)}
 					</div>

@@ -8,6 +8,10 @@ const api = axios.create({
 		"Content-Type": "application/json",
 	},
 	timeout: 30000, // 30 seconds timeout
+	validateStatus: (status) => {
+		// Only throw errors for status codes >= 400
+		return status < 400;
+	},
 });
 
 // Request interceptor - Add token and encrypt query params
@@ -35,9 +39,20 @@ api.interceptors.request.use(
 
 // Response interceptor - Handle errors and retry logic
 api.interceptors.response.use(
-	(response) => response,
+	(response) => {
+		// Log successful responses for debugging (can be removed in production)
+		if (response.config.url?.includes('/tasks/') && response.config.url?.includes('/status')) {
+			console.log('[API] Task status update response:', response.status, response.data);
+		}
+		return response;
+	},
 	async (error: AxiosError) => {
 		const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
+
+		// Log errors for debugging (can be removed in production)
+		if (error.config?.url?.includes('/tasks/') && error.config?.url?.includes('/status')) {
+			console.log('[API] Task status update error:', error.response?.status, error.response?.data);
+		}
 
 		// Handle 401 - Unauthorized
 		if (error.response?.status === 401) {
@@ -66,6 +81,7 @@ api.interceptors.response.use(
 		}
 
 		// 403 errors are handled by individual components (like admin page)
+		// Always reject errors so they can be caught by the calling code
 		return Promise.reject(error);
 	}
 );
@@ -158,7 +174,10 @@ export const tasksAPI = {
 		if (params?.status) queryParams.append('status', params.status);
 		return api.get(`/tasks/${companyId}${queryParams.toString() ? '?' + queryParams.toString() : ''}`);
 	},
-	updateStatus: (id: string, status: string) => api.put(`/tasks/${id}/status`, { status }),
+	updateStatus: (id: string, status: string, period?: string) => {
+		const params = period ? { period } : {};
+		return api.put(`/tasks/${id}/status`, { status }, { params });
+	},
 	create: (companyId: string, data: any) => api.post(`/tasks/${companyId}`, data),
 	delete: (id: string) => api.delete(`/tasks/${id}`),
 };
