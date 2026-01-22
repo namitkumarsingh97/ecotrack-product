@@ -22,12 +22,12 @@ interface ScoreGrade {
 
 interface Scorecard {
 	period: string;
-	overallScore: number;
+	overallScore: number | null;
 	overallGrade: ScoreGrade;
 	overallRisk: 'Low' | 'Medium' | 'High';
 	overallRiskColor: string;
 	dataCompleteness: number;
-	environmentalScore: number;
+	environmentalScore: number | null;
 	environmentalGrade: ScoreGrade;
 	environmentalRisk: 'Low' | 'Medium' | 'High';
 	environmentalRiskColor: string;
@@ -36,7 +36,7 @@ interface Scorecard {
 	environmentalMissing: string[];
 	environmentalMissingCritical: string[];
 	environmentalImpact: string;
-	socialScore: number;
+	socialScore: number | null;
 	socialGrade: ScoreGrade;
 	socialRisk: 'Low' | 'Medium' | 'High';
 	socialRiskColor: string;
@@ -45,7 +45,7 @@ interface Scorecard {
 	socialMissing: string[];
 	socialMissingCritical: string[];
 	socialImpact: string;
-	governanceScore: number;
+	governanceScore: number | null;
 	governanceGrade: ScoreGrade;
 	governanceRisk: 'Low' | 'Medium' | 'High';
 	governanceRiskColor: string;
@@ -381,10 +381,10 @@ export default function ESGScorecardPage() {
 									<div className="text-center">
 										<div className="text-xs font-medium text-gray-700 mb-1">Environment Score</div>
 										<div className="text-4xl font-bold text-gray-900 mb-2">
-											{scorecard.environmentalScore.toFixed(1)} / 100
+											{(scorecard.environmentalScore ?? 0).toFixed(1)} / 100
 										</div>
 										<div className="text-sm font-medium text-gray-700">
-											Status: {getStatusText(scorecard.environmentalScore, scorecard.environmentalCompleteness, scorecard.environmentalMissingCritical)}
+											Status: {getStatusText(scorecard.environmentalScore ?? 0, scorecard.environmentalCompleteness, scorecard.environmentalMissingCritical)}
 										</div>
 									</div>
 								</div>
@@ -444,10 +444,10 @@ export default function ESGScorecardPage() {
 									<div className="text-center">
 										<div className="text-xs font-medium text-gray-700 mb-1">Social Score</div>
 										<div className="text-4xl font-bold text-gray-900 mb-2">
-											{scorecard.socialScore.toFixed(1)} / 100
+											{(scorecard.socialScore ?? 0).toFixed(1)} / 100
 										</div>
 										<div className="text-sm font-medium text-gray-700">
-											Status: {getStatusText(scorecard.socialScore, scorecard.socialCompleteness, scorecard.socialMissingCritical)}
+											Status: {getStatusText(scorecard.socialScore ?? 0, scorecard.socialCompleteness, scorecard.socialMissingCritical)}
 										</div>
 									</div>
 								</div>
@@ -481,10 +481,10 @@ export default function ESGScorecardPage() {
 									<div className="text-center">
 										<div className="text-xs font-medium text-gray-700 mb-1">Governance Score</div>
 										<div className="text-4xl font-bold text-gray-900 mb-2">
-											{scorecard.governanceScore.toFixed(1)} / 100
+											{(scorecard.governanceScore ?? 0).toFixed(1)} / 100
 										</div>
 										<div className="text-sm font-medium text-gray-700">
-											Status: {getStatusText(scorecard.governanceScore, scorecard.governanceCompleteness, scorecard.governanceMissingCritical)}
+											Status: {getStatusText(scorecard.governanceScore ?? 0, scorecard.governanceCompleteness, scorecard.governanceMissingCritical)}
 										</div>
 									</div>
 								</div>
@@ -604,7 +604,7 @@ export default function ESGScorecardPage() {
 					<div className="text-center">
 						<div className="text-xs font-medium text-gray-700 mb-2">ESG Score</div>
 						<div className="text-6xl font-bold text-gray-900 mb-2">
-							{scorecard.overallScore.toFixed(0)} / 100
+							{(scorecard.overallScore ?? 0).toFixed(0)} / 100
 						</div>
 						<div className="flex items-center justify-center gap-3 mb-2">
 							<span
@@ -635,10 +635,10 @@ export default function ESGScorecardPage() {
 							<ArrowRight size={14} className="text-gray-400" />
 						</div>
 						<div className="text-2xl font-bold text-green-600 mb-1">
-							Score: {scorecard.environmentalScore.toFixed(0)}
+							Score: {(scorecard.environmentalScore ?? 0).toFixed(0)}
 						</div>
 						<div className="text-xs text-gray-600 mb-1">
-							Status: {getStatusText(scorecard.environmentalScore, scorecard.environmentalCompleteness, scorecard.environmentalMissingCritical)}
+							Status: {getStatusText(scorecard.environmentalScore ?? 0, scorecard.environmentalCompleteness, scorecard.environmentalMissingCritical)}
 						</div>
 						{scorecard.environmentalMissingCritical.length > 0 && (
 							<div className="text-xs text-gray-500">
@@ -657,10 +657,10 @@ export default function ESGScorecardPage() {
 							<ArrowRight size={14} className="text-gray-400" />
 						</div>
 						<div className="text-2xl font-bold text-blue-600 mb-1">
-							Score: {scorecard.socialScore.toFixed(0)}
+							Score: {(scorecard.socialScore ?? 0).toFixed(0)}
 						</div>
 						<div className="text-xs text-gray-600 mb-1">
-							Status: {getStatusText(scorecard.socialScore, scorecard.socialCompleteness, scorecard.socialMissingCritical)}
+							Status: {getStatusText(scorecard.socialScore ?? 0, scorecard.socialCompleteness, scorecard.socialMissingCritical)}
 						</div>
 					</button>
 
@@ -674,10 +674,10 @@ export default function ESGScorecardPage() {
 							<ArrowRight size={14} className="text-gray-400" />
 						</div>
 						<div className="text-2xl font-bold text-purple-600 mb-1">
-							Score: {scorecard.governanceScore.toFixed(0)}
+							Score: {(scorecard.governanceScore ?? 0).toFixed(0)}
 						</div>
 						<div className="text-xs text-gray-600 mb-1">
-							Status: {getStatusText(scorecard.governanceScore, scorecard.governanceCompleteness, scorecard.governanceMissingCritical)}
+							Status: {getStatusText(scorecard.governanceScore ?? 0, scorecard.governanceCompleteness, scorecard.governanceMissingCritical)}
 						</div>
 						{scorecard.governanceMissingCritical.length > 0 && (
 							<div className="text-xs text-gray-500">

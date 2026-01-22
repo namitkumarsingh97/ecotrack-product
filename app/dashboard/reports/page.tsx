@@ -24,6 +24,7 @@ export default function ReportsPage() {
 	const { 
 		scores: esgScoresMap, 
 		fetchScores,
+		calculateScore,
 		isLoading: esgLoading
 	} = useESGStore();
 
@@ -147,6 +148,69 @@ export default function ReportsPage() {
 			showToast.success(t("reports.excelDownloadSuccess"));
 		} catch (error: any) {
 			showToast.error(error.response?.data?.error || t("reports.excelDownloadFailed"));
+		} finally {
+			setLoading(null);
+		}
+	};
+
+	const handleCalculateScores = async () => {
+		if (!selectedCompanyId) {
+			showToast.error("Please select a company");
+			return;
+		}
+
+		setLoading("calculate");
+		try {
+			// Get actual periods from metrics (not from the generic periods list)
+			const [envResponse, socialResponse, govResponse] = await Promise.all([
+				metricsAPI.getEnvironmental(selectedCompanyId).catch(() => ({ data: { metrics: [] } })),
+				metricsAPI.getSocial(selectedCompanyId).catch(() => ({ data: { metrics: [] } })),
+				metricsAPI.getGovernance(selectedCompanyId).catch(() => ({ data: { metrics: [] } }))
+			]);
+
+			const envMetrics = envResponse.data.metrics || [];
+			const socialMetrics = socialResponse.data.metrics || [];
+			const govMetrics = govResponse.data.metrics || [];
+
+			// Get all unique periods from actual metrics
+			const allPeriods = Array.from(new Set([
+				...envMetrics.map((m: any) => m.period),
+				...socialMetrics.map((m: any) => m.period),
+				...govMetrics.map((m: any) => m.period)
+			])).sort().reverse(); // Sort newest first
+
+			if (allPeriods.length === 0) {
+				showToast.error("No periods found. Please create metrics first.");
+				return;
+			}
+
+			// Find the latest period that has all three metric types
+			let latestPeriod = null;
+			for (const period of allPeriods) {
+				const hasEnv = envMetrics.some((m: any) => m.period === period);
+				const hasSocial = socialMetrics.some((m: any) => m.period === period);
+				const hasGov = govMetrics.some((m: any) => m.period === period);
+				
+				if (hasEnv && hasSocial && hasGov) {
+					latestPeriod = period;
+					break;
+				}
+			}
+
+			if (!latestPeriod) {
+				showToast.error("No complete period found. Please ensure all three metric types exist for the same period.");
+				return;
+			}
+
+			// Calculate for the latest period
+			await calculateScore(selectedCompanyId, latestPeriod);
+			showToast.success("ESG scores calculated successfully!");
+			
+			// Refresh scores
+			await fetchScores(selectedCompanyId);
+		} catch (error: any) {
+			const errorMsg = error.response?.data?.error || error.message || "Failed to calculate scores";
+			showToast.error(errorMsg);
 		} finally {
 			setLoading(null);
 		}
@@ -339,14 +403,33 @@ export default function ReportsPage() {
 							{t("reports.noReports")}
 						</h3>
 						<p className="text-xs text-gray-600 mb-4">
-							{t("reports.generateReport")}
+							ESG scores need to be calculated from your metrics. Click below to calculate scores.
 						</p>
-						<a
-							href="/dashboard/environment"
-							className="inline-block px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700"
-						>
-							{t("dashboard.addMetrics")}
-						</a>
+						<div className="flex items-center justify-center gap-2">
+							<button
+								onClick={handleCalculateScores}
+								disabled={loading === "calculate" || !selectedCompanyId}
+								className="inline-flex items-center gap-2 px-4 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+							>
+								{loading === "calculate" ? (
+									<>
+										<div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+										Calculating...
+									</>
+								) : (
+									<>
+										<Plus size={16} />
+										Calculate ESG Scores
+									</>
+								)}
+							</button>
+							<Link
+								href="/dashboard/environment"
+								className="inline-block px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200"
+							>
+								{t("dashboard.addMetrics")}
+							</Link>
+						</div>
 					</div>
 				) : (
 					<ETTable
