@@ -19,6 +19,7 @@ import {
 	Filter,
 	Download,
 	Building2,
+	Eye,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
@@ -44,6 +45,7 @@ export default function AdminUsersPage() {
 	const [searchTerm, setSearchTerm] = useState("");
 	const [filterRole, setFilterRole] = useState<string>("all");
 	const [filterCompany, setFilterCompany] = useState<string>("all");
+	const [showAdminProfile, setShowAdminProfile] = useState(false);
 	const [showCreateModal, setShowCreateModal] = useState(false);
 	const [showEditModal, setShowEditModal] = useState(false);
 	const [selectedUser, setSelectedUser] = useState<User | null>(null);
@@ -190,18 +192,57 @@ export default function AdminUsersPage() {
 		setShowEditModal(true);
 	};
 
-	// Filter users
+	// Separate admins from regular users
+	const adminUsers = users.filter((user) => user.role === "ADMIN");
+	
+	// Filter users (exclude System Admins)
 	const filteredUsers = users.filter((user) => {
+		if (user.role === "ADMIN") return false; // Exclude System Admins
 		const matchesSearch =
 			user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-			user.email.toLowerCase().includes(searchTerm.toLowerCase());
+			user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+			(user.companyName && user.companyName.toLowerCase().includes(searchTerm.toLowerCase()));
 		const matchesRole = filterRole === "all" || user.role === filterRole;
-		// Admins are system-level and don't have companies, so they show up in "All Companies" or "No Company" filters
 		const matchesCompany = filterCompany === "all" || 
-			(user.role === "ADMIN" && filterCompany === "none") ||
-			(user.role !== "ADMIN" && (user.companyId === filterCompany || (!user.companyId && filterCompany === "none")));
+			(user.companyId === filterCompany || (!user.companyId && filterCompany === "none"));
 		return matchesSearch && matchesRole && matchesCompany;
 	});
+
+	// Users without companies (orphaned users)
+	const usersWithoutCompanies = filteredUsers.filter((user) => !user.companyId);
+
+	// Group users by company and merge with company data
+	const companyDataMap = new Map(
+		companies.map((company) => [company._id, company])
+	);
+
+	const groupedByCompany = filteredUsers.reduce((acc, user) => {
+		if (user.companyId && user.companyName) {
+			if (!acc[user.companyId]) {
+				const company = companyDataMap.get(user.companyId);
+				acc[user.companyId] = {
+					companyId: user.companyId,
+					companyName: user.companyName,
+					plan: company?.plan || "starter",
+					subscriptionStartDate: company?.subscriptionStartDate || company?.createdAt,
+					users: [],
+				};
+			}
+			acc[user.companyId].users.push(user);
+		}
+		return acc;
+	}, {} as Record<string, { 
+		companyId: string; 
+		companyName: string; 
+		plan: string;
+		subscriptionStartDate: string | Date;
+		users: User[] 
+	}>);
+
+	// Convert to array and sort by company name
+	const companyList = Object.values(groupedByCompany).sort((a, b) => 
+		a.companyName.localeCompare(b.companyName)
+	);
 
 	const getRoleBadgeColor = (role: string) => {
 		switch (role) {
@@ -226,24 +267,26 @@ export default function AdminUsersPage() {
 	};
 
 	const handleExport = () => {
-		if (filteredUsers.length === 0) {
-			showToast.error("No users to export");
+		if (companyList.length === 0) {
+			showToast.error("No companies to export");
 			return;
 		}
 
-		const exportData = filteredUsers.map((user) => ({
-			Name: user.name,
-			Email: user.email,
-			Plan: user.plan.toUpperCase(),
-			Role: user.role,
-			"Created At": new Date(user.createdAt).toLocaleDateString(),
+		const exportData = companyList.map((company) => ({
+			Company: company.companyName,
+			"Plan Purchased": company.plan.toUpperCase(),
+			"Date of Purchase": company.subscriptionStartDate 
+				? new Date(company.subscriptionStartDate).toLocaleDateString()
+				: "N/A",
+			"Total Users": company.users.length,
+			"Users": company.users.map(u => `${u.name} (${u.role})`).join(", "),
 		}));
 
 		exportToExcel(exportData, {
-			filename: `users-export-${new Date().toISOString().split("T")[0]}.xlsx`,
-			sheetName: "Users",
+			filename: `companies-export-${new Date().toISOString().split("T")[0]}.xlsx`,
+			sheetName: "Companies",
 		});
-		showToast.success("Users exported successfully!");
+		showToast.success("Companies exported successfully!");
 	};
 
 	if (loading) {
@@ -282,7 +325,7 @@ export default function AdminUsersPage() {
 					<div className="flex gap-2">
 						<button
 							onClick={handleExport}
-							disabled={users.length === 0}
+							disabled={companyList.length === 0}
 							className="flex items-center gap-1.5 px-4 py-1.5 bg-gray-100 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 						>
 							<Download size={14} />
@@ -312,7 +355,7 @@ export default function AdminUsersPage() {
 							<Search className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-400" size={14} />
 							<input
 								type="text"
-								placeholder="Search by name or email..."
+								placeholder="Search by company name or user name/email..."
 								value={searchTerm}
 								onChange={(e) => setSearchTerm(e.target.value)}
 								className="w-full pl-8 pr-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -350,72 +393,199 @@ export default function AdminUsersPage() {
 					</div>
 				</div>
 
-				{/* Users Table */}
+				{/* Admin Profile Section */}
+				{adminUsers.length > 0 && (
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+						<div className="bg-purple-50 px-4 py-3 border-b border-purple-200">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<Users size={18} className="text-purple-600" />
+									<h2 className="text-sm font-semibold text-purple-900">Admin Profiles</h2>
+									<span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded-full">
+										{adminUsers.length}
+									</span>
+								</div>
+								<button
+									onClick={() => setShowAdminProfile(!showAdminProfile)}
+									className="text-xs text-purple-700 hover:text-purple-900 font-medium"
+								>
+									{showAdminProfile ? "Hide" : "Show"} Details
+								</button>
+							</div>
+						</div>
+						{showAdminProfile && (
+							<div className="p-4">
+								<div className="space-y-3">
+									{adminUsers.map((admin) => (
+										<div key={admin.id} className="border border-gray-200 rounded-lg p-3">
+											<div className="flex items-start justify-between">
+												<div className="flex-1">
+													<div className="flex items-center gap-2 mb-1">
+														<span className="text-xs font-semibold text-gray-900">{admin.name}</span>
+														<span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-semibold rounded-full">
+															ADMIN
+														</span>
+													</div>
+													<div className="text-xs text-gray-600">{admin.email}</div>
+													{admin.companyName && (
+														<div className="mt-1 flex items-center gap-1">
+															<Building2 size={12} className="text-gray-400" />
+															<span className="text-xs text-gray-500">Company: {admin.companyName}</span>
+														</div>
+													)}
+													{!admin.companyId && (
+														<div className="mt-1 text-xs text-gray-500 italic">System-level admin (no company)</div>
+													)}
+												</div>
+												<div className="flex items-center gap-1">
+													<button
+														onClick={() => openEditModal(admin)}
+														className="text-blue-600 hover:text-blue-900 p-1 hover:bg-blue-50 rounded transition-colors"
+														title="Edit Admin"
+													>
+														<Edit size={14} />
+													</button>
+													<button
+														onClick={() => handleResetPassword(admin.id)}
+														disabled={actionLoading === `reset-${admin.id}`}
+														className="text-yellow-600 hover:text-yellow-900 p-1 hover:bg-yellow-50 rounded transition-colors disabled:opacity-50"
+														title="Reset Password"
+													>
+														<Key size={14} />
+													</button>
+												</div>
+											</div>
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+					</div>
+				)}
+
+				{/* Companies Table */}
 				<div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
 					{loading ? (
-						<SkeletonTable rows={5} cols={5} />
+						<SkeletonTable rows={5} cols={4} />
+					) : companyList.length === 0 && usersWithoutCompanies.length === 0 ? (
+						<div className="px-2 py-8 text-center text-gray-500">
+							<Building2 size={36} className="mx-auto mb-3 text-gray-300" />
+							<p className="text-xs">No companies found</p>
+							<p className="text-xs text-gray-400 mt-1">Users need to be linked to companies</p>
+						</div>
 					) : (
 						<div className="overflow-x-auto">
-						<table className="w-full">
-							<thead className="bg-gray-50 border-b border-gray-200">
-								<tr>
-									<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										User
-									</th>
-									<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Company
-									</th>
-									<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Plan
-									</th>
-									<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Role
-									</th>
-									<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Created
-									</th>
-									<th className="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-										Actions
-									</th>
-								</tr>
-							</thead>
-							<tbody className="bg-white divide-y divide-gray-200">
-								{filteredUsers.length === 0 ? (
+							<table className="w-full">
+								<thead className="bg-gray-50 border-b border-gray-200">
 									<tr>
-										<td colSpan={6} className="px-2 py-8 text-center text-gray-500">
-											<Users size={36} className="mx-auto mb-3 text-gray-300" />
-											<p className="text-xs">No users found</p>
-										</td>
+										<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											Company
+										</th>
+										<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											Company Plan Purchased
+										</th>
+										<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											Date of Purchase
+										</th>
+										<th className="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+											Actions
+										</th>
 									</tr>
-								) : (
-									filteredUsers.map((user) => (
+								</thead>
+								<tbody className="bg-white divide-y divide-gray-200">
+									{companyList.map((company) => (
+										<tr key={company.companyId} className="hover:bg-gray-50">
+											<td className="px-2 py-2 whitespace-nowrap">
+												<div className="flex items-center gap-2">
+													<Building2 size={16} className="text-gray-400" />
+													<div>
+														<div className="text-xs font-medium text-gray-900">{company.companyName}</div>
+														<div className="text-xs text-gray-500">{company.users.length} user{company.users.length !== 1 ? 's' : ''}</div>
+													</div>
+												</div>
+											</td>
+											<td className="px-2 py-2 whitespace-nowrap">
+												<span
+													className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getPlanBadgeColor(
+														company.plan
+													)}`}
+												>
+													{company.plan.toUpperCase()}
+												</span>
+											</td>
+											<td className="px-2 py-2 whitespace-nowrap text-xs text-gray-500">
+												{company.subscriptionStartDate 
+													? new Date(company.subscriptionStartDate).toLocaleDateString()
+													: "N/A"
+												}
+											</td>
+											<td className="px-2 py-2 whitespace-nowrap text-right">
+												<div className="flex flex-col items-end gap-1">
+													{company.users.map((user) => (
+														<div key={user.id} className="flex items-center gap-2">
+															<span className="text-xs text-gray-700">{user.name}</span>
+															<span
+																className={`inline-flex px-1.5 py-0.5 text-[10px] font-semibold rounded ${getRoleBadgeColor(
+																	user.role
+																)}`}
+															>
+																{user.role}
+															</span>
+														</div>
+													))}
+													<button
+														onClick={() => router.push(`/dashboard/admin/users/${company.companyId}`)}
+														className="mt-1 flex items-center gap-1 px-2 py-1 bg-green-600 text-white rounded text-[10px] font-medium hover:bg-green-700 transition-colors"
+													>
+														<Eye size={12} />
+														View Details
+													</button>
+												</div>
+											</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					)}
+				</div>
+
+				{/* Users Without Companies Section */}
+				{usersWithoutCompanies.length > 0 && (
+					<div className="bg-white rounded-lg shadow-sm border border-orange-200 overflow-hidden">
+						<div className="bg-orange-50 px-4 py-3 border-b border-orange-200">
+							<div className="flex items-center gap-2">
+								<Users size={18} className="text-orange-600" />
+								<h2 className="text-sm font-semibold text-orange-900">Users Without Companies</h2>
+								<span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full">
+									{usersWithoutCompanies.length}
+								</span>
+							</div>
+							<p className="text-xs text-orange-700 mt-1">These users need to be linked to a company</p>
+						</div>
+						<div className="overflow-x-auto">
+							<table className="w-full">
+								<thead className="bg-gray-50 border-b border-gray-200">
+									<tr>
+										<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											User
+										</th>
+										<th className="px-2 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+											Role
+										</th>
+										<th className="px-2 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+											Actions
+										</th>
+									</tr>
+								</thead>
+								<tbody className="bg-white divide-y divide-gray-200">
+									{usersWithoutCompanies.map((user) => (
 										<tr key={user.id} className="hover:bg-gray-50">
 											<td className="px-2 py-2 whitespace-nowrap">
 												<div>
 													<div className="text-xs font-medium text-gray-900">{user.name}</div>
 													<div className="text-xs text-gray-500">{user.email}</div>
 												</div>
-											</td>
-											<td className="px-2 py-2 whitespace-nowrap">
-												{user.role === "ADMIN" ? (
-													<span className="text-xs text-purple-600 font-medium">System Admin</span>
-												) : user.companyName ? (
-													<div className="flex items-center gap-1">
-														<Building2 size={12} className="text-gray-400" />
-														<span className="text-xs text-gray-700">{user.companyName}</span>
-													</div>
-												) : (
-													<span className="text-xs text-gray-400 italic">No company</span>
-												)}
-											</td>
-											<td className="px-2 py-2 whitespace-nowrap">
-												<span
-													className={`inline-flex px-2 py-0.5 text-xs font-semibold rounded-full ${getPlanBadgeColor(
-														user.plan
-													)}`}
-												>
-													{user.plan.toUpperCase()}
-												</span>
 											</td>
 											<td className="px-2 py-2 whitespace-nowrap">
 												<span
@@ -425,9 +595,6 @@ export default function AdminUsersPage() {
 												>
 													{user.role}
 												</span>
-											</td>
-											<td className="px-2 py-2 whitespace-nowrap text-xs text-gray-500">
-												{new Date(user.createdAt).toLocaleDateString()}
 											</td>
 											<td className="px-2 py-2 whitespace-nowrap text-right text-xs font-medium">
 												<div className="flex items-center justify-end gap-1">
@@ -457,36 +624,39 @@ export default function AdminUsersPage() {
 												</div>
 											</td>
 										</tr>
-									))
-								)}
-							</tbody>
-						</table>
+									))}
+								</tbody>
+							</table>
+						</div>
 					</div>
-					)}
-				</div>
+				)}
 
 				{/* Stats */}
-				<div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+				<div className="grid grid-cols-1 md:grid-cols-5 gap-3">
 					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-						<div className="text-xs text-gray-600">Total Users</div>
-						<div className="text-lg font-semibold text-gray-900">{users.length}</div>
+						<div className="text-xs text-gray-600">Total Companies</div>
+						<div className="text-lg font-semibold text-gray-900">{companyList.length}</div>
 					</div>
 					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-						<div className="text-xs text-gray-600">Admins</div>
-						<div className="text-lg font-semibold text-purple-600">
-							{users.filter((u) => u.role === "ADMIN").length}
+						<div className="text-xs text-gray-600">Admin Users</div>
+						<div className="text-lg font-semibold text-purple-600">{adminUsers.length}</div>
+					</div>
+					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+						<div className="text-xs text-gray-600">Total Users</div>
+						<div className="text-lg font-semibold text-gray-600">
+							{filteredUsers.length}
 						</div>
 					</div>
 					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
 						<div className="text-xs text-gray-600">Regular Users</div>
 						<div className="text-lg font-semibold text-gray-600">
-							{users.filter((u) => u.role === "USER").length}
+							{filteredUsers.filter((u) => u.role === "USER").length}
 						</div>
 					</div>
 					<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
-						<div className="text-xs text-gray-600">Auditors</div>
-						<div className="text-lg font-semibold text-blue-600">
-							{users.filter((u) => u.role === "AUDITOR").length}
+						<div className="text-xs text-gray-600">Users w/o Company</div>
+						<div className="text-lg font-semibold text-orange-600">
+							{usersWithoutCompanies.length}
 						</div>
 					</div>
 				</div>
